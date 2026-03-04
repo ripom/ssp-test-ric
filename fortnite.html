@@ -1,0 +1,1249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fortnite JS</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { overflow: hidden; background: #000; font-family: 'Segoe UI', Arial, sans-serif; user-select: none; }
+  canvas { display: block; }
+
+  /* Crosshair */
+  #crosshair {
+    position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);
+    pointer-events: none; z-index: 10;
+  }
+  #crosshair .ch { position: absolute; background: #fff; }
+  #crosshair .ch.t { width: 2px; height: 14px; left: -1px; top: -20px; }
+  #crosshair .ch.b { width: 2px; height: 14px; left: -1px; top: 6px; }
+  #crosshair .ch.l { width: 14px; height: 2px; left: -20px; top: -1px; }
+  #crosshair .ch.r { width: 14px; height: 2px; left: 6px; top: -1px; }
+
+  /* HUD */
+  #hud {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    display: flex; flex-direction: column; align-items: center;
+    pointer-events: none; z-index: 10;
+  }
+
+  /* Health & Shield */
+  #bars {
+    display: flex; gap: 4px; margin-bottom: 6px;
+    flex-direction: column; width: 300px;
+  }
+  .bar-row { display: flex; align-items: center; gap: 6px; }
+  .bar-label { color: #fff; font-size: 11px; width: 50px; text-align: right; text-shadow: 1px 1px 2px #000; }
+  .bar-track {
+    flex: 1; height: 14px; background: rgba(0,0,0,0.5);
+    border: 1px solid rgba(255,255,255,0.2); border-radius: 2px;
+    overflow: hidden; position: relative;
+  }
+  .bar-fill { height: 100%; transition: width 0.3s; }
+  .bar-fill.hp { background: linear-gradient(to right, #2a2, #4d4); }
+  .bar-fill.shield { background: linear-gradient(to right, #26c, #48f); }
+  .bar-val {
+    position: absolute; right: 4px; top: 0; font-size: 10px;
+    color: #fff; line-height: 14px; text-shadow: 1px 1px 1px #000;
+  }
+
+  /* Weapon & Build bar */
+  #action-bar {
+    display: flex; gap: 3px; margin-bottom: 8px;
+  }
+  .slot {
+    width: 60px; height: 54px; background: rgba(0,0,0,0.55);
+    border: 2px solid #555; border-radius: 4px;
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; position: relative;
+    pointer-events: auto; cursor: pointer;
+  }
+  .slot.active { border-color: #fff; background: rgba(255,255,255,0.12); }
+  .slot.weapon { border-color: #666; }
+  .slot.build { border-color: #46a; }
+  .slot.build.active { border-color: #5af; background: rgba(80,160,255,0.2); }
+  .slot .icon { font-size: 22px; }
+  .slot .sname { font-size: 9px; color: #aaa; margin-top: 2px; }
+  .slot .skey {
+    position: absolute; top: 1px; left: 3px; font-size: 9px; color: #888;
+  }
+  .slot .ammo {
+    position: absolute; bottom: 1px; right: 3px; font-size: 9px; color: #ff0;
+  }
+
+  /* Materials */
+  #materials {
+    position: fixed; bottom: 70px; right: 15px;
+    display: flex; flex-direction: column; gap: 4px; z-index: 10;
+    pointer-events: none;
+  }
+  .mat-row {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 13px; color: #fff; text-shadow: 1px 1px 2px #000;
+  }
+  .mat-icon { font-size: 16px; }
+
+  /* Kill feed */
+  #killfeed {
+    position: fixed; top: 10px; right: 10px;
+    z-index: 10; pointer-events: none;
+    display: flex; flex-direction: column; gap: 3px;
+  }
+  .kill-msg {
+    background: rgba(0,0,0,0.6); color: #fff; padding: 4px 10px;
+    border-radius: 3px; font-size: 12px;
+    animation: fadeKill 3s forwards;
+  }
+  @keyframes fadeKill { 0%{opacity:1} 70%{opacity:1} 100%{opacity:0} }
+
+  /* Storm info */
+  #storm-info {
+    position: fixed; top: 10px; left: 50%; transform: translateX(-50%);
+    z-index: 10; pointer-events: none; text-align: center;
+  }
+  #storm-timer {
+    color: #fff; font-size: 14px; text-shadow: 1px 1px 2px #000;
+    background: rgba(0,0,0,0.4); padding: 4px 14px; border-radius: 4px;
+  }
+  #alive-count {
+    color: #fff; font-size: 22px; font-weight: bold;
+    text-shadow: 1px 1px 3px #000; margin-top: 4px;
+  }
+  #alive-count span { font-size: 11px; font-weight: normal; color: #aaa; }
+
+  /* Minimap */
+  #minimap {
+    position: fixed; top: 10px; left: 10px; z-index: 10;
+    width: 140px; height: 140px;
+    border: 2px solid rgba(255,255,255,0.3); border-radius: 4px;
+    overflow: hidden; pointer-events: none;
+  }
+  #minimap canvas { width: 100%; height: 100%; image-rendering: pixelated; }
+
+  /* Overlay */
+  #overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.85);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    z-index: 30; color: #fff;
+  }
+  #overlay.hidden { display: none; }
+  #overlay h1 {
+    font-size: 56px; font-weight: 900; letter-spacing: 6px;
+    background: linear-gradient(135deg, #4af, #a4f, #f4a);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    margin-bottom: 6px;
+  }
+  #overlay .sub { color: #aaa; font-size: 14px; margin-bottom: 30px; }
+  #overlay .info {
+    text-align: left; line-height: 2; font-size: 14px; color: #ccc;
+    background: rgba(255,255,255,0.05); padding: 20px 30px;
+    border-radius: 8px; margin-bottom: 24px; max-width: 500px;
+  }
+  #overlay .info b { color: #5af; }
+  #overlay button {
+    font-size: 20px; padding: 14px 60px;
+    background: linear-gradient(135deg, #48f, #a4f);
+    color: #fff; border: none; border-radius: 8px;
+    cursor: pointer; font-weight: bold; letter-spacing: 2px;
+  }
+  #overlay button:hover { filter: brightness(1.2); }
+
+  /* Game over */
+  #game-over {
+    position: fixed; inset: 0; z-index: 25;
+    display: none; flex-direction: column; align-items: center; justify-content: center;
+  }
+  #game-over.show { display: flex; }
+  #game-over .go-bg {
+    position: absolute; inset: 0; background: rgba(0,0,0,0.7);
+  }
+  #game-over .go-content {
+    z-index: 1; text-align: center;
+  }
+  #game-over h2 {
+    font-size: 48px; color: #fff; text-shadow: 0 0 30px rgba(255,200,0,0.5);
+    margin-bottom: 10px;
+  }
+  #game-over .go-stats {
+    color: #ccc; font-size: 16px; margin-bottom: 20px; line-height: 1.8;
+  }
+  #game-over button {
+    font-size: 18px; padding: 12px 50px;
+    background: linear-gradient(135deg, #48f, #a4f);
+    color: #fff; border: none; border-radius: 8px;
+    cursor: pointer; font-weight: bold;
+  }
+
+  /* Damage flash */
+  #damage-flash {
+    position: fixed; inset: 0; pointer-events: none; z-index: 15;
+    background: radial-gradient(ellipse at center, transparent 50%, rgba(255,0,0,0.4));
+    opacity: 0; transition: opacity 0.15s;
+  }
+  #damage-flash.show { opacity: 1; }
+
+  /* Hit marker */
+  #hitmarker {
+    position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);
+    pointer-events: none; z-index: 11; opacity: 0;
+    font-size: 16px; color: #f44; font-weight: bold;
+    text-shadow: 0 0 4px #f00;
+    transition: opacity 0.1s;
+  }
+  #hitmarker.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<div id="crosshair">
+  <div class="ch t"></div><div class="ch b"></div>
+  <div class="ch l"></div><div class="ch r"></div>
+</div>
+
+<div id="hud">
+  <div id="bars">
+    <div class="bar-row">
+      <span class="bar-label">SHIELD</span>
+      <div class="bar-track"><div class="bar-fill shield" id="shield-bar" style="width:50%"></div><span class="bar-val" id="shield-val">50</span></div>
+    </div>
+    <div class="bar-row">
+      <span class="bar-label">HP</span>
+      <div class="bar-track"><div class="bar-fill hp" id="hp-bar" style="width:100%"></div><span class="bar-val" id="hp-val">100</span></div>
+    </div>
+  </div>
+  <div id="action-bar"></div>
+</div>
+
+<div id="materials">
+  <div class="mat-row"><span class="mat-icon">🪵</span> <span id="mat-wood">200</span></div>
+  <div class="mat-row"><span class="mat-icon">🪨</span> <span id="mat-stone">100</span></div>
+  <div class="mat-row"><span class="mat-icon">🔩</span> <span id="mat-metal">50</span></div>
+</div>
+
+<div id="killfeed"></div>
+
+<div id="storm-info">
+  <div id="storm-timer">Storm closing in: 60s</div>
+  <div id="alive-count">25 <span>alive</span></div>
+</div>
+
+<div id="minimap"><canvas id="minimap-canvas" width="140" height="140"></canvas></div>
+
+<div id="damage-flash"></div>
+<div id="hitmarker">✕</div>
+
+<div id="overlay">
+  <h1>FORTNITE</h1>
+  <div class="sub">JavaScript Battle Royale</div>
+  <div class="info">
+    <b>WASD</b> — Move &nbsp; <b>Space</b> — Jump &nbsp; <b>Shift</b> — Sprint<br>
+    <b>Mouse</b> — Aim &nbsp; <b>Left Click</b> — Shoot / Build<br>
+    <b>1-3</b> — Weapons &nbsp; <b>4-6</b> — Build (Wall/Ramp/Floor)<br>
+    <b>R</b> — Reload &nbsp; <b>F</b> — Toggle fog<br>
+    <b>Q</b> — Quick build wall &nbsp; <b>ESC</b> — Release mouse<br><br>
+    🎯 Eliminate 24 bots to get the <b>Victory Royale!</b><br>
+    ⚡ Storm closes in — stay inside the safe zone!
+  </div>
+  <button id="play-btn">DROP IN</button>
+</div>
+
+<div id="game-over">
+  <div class="go-bg"></div>
+  <div class="go-content">
+    <h2 id="go-title"></h2>
+    <div class="go-stats" id="go-stats"></div>
+    <button id="retry-btn">PLAY AGAIN</button>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ═══════════════════════════════════════════════════════════════
+//  FORTNITE JS - Battle Royale
+// ═══════════════════════════════════════════════════════════════
+
+// ─── Config ───────────────────────────────────────────────────
+const MAP_SIZE = 200;
+const BOT_COUNT = 24;
+const STORM_PHASES = [
+  { delay: 30, shrinkTime: 20, radius: 90, damage: 1 },
+  { delay: 25, shrinkTime: 15, radius: 60, damage: 2 },
+  { delay: 20, shrinkTime: 12, radius: 35, damage: 5 },
+  { delay: 15, shrinkTime: 10, radius: 15, damage: 10 },
+  { delay: 10, shrinkTime: 8,  radius: 5,  damage: 20 },
+];
+
+const WEAPONS = [
+  { name: "AR",       icon: "🔫", damage: 32, fireRate: 0.15, range: 120, spread: 0.03, magSize: 30, reloadTime: 2.2, auto: true, color: 0x44ff44 },
+  { name: "Shotgun",  icon: "💥", damage: 80, fireRate: 0.8,  range: 20,  spread: 0.12, magSize: 5,  reloadTime: 4.5, auto: false, color: 0xff8800, pellets: 6 },
+  { name: "Sniper",   icon: "🎯", damage: 105,fireRate: 1.5,  range: 200, spread: 0.005,magSize: 1,  reloadTime: 3.0, auto: false, color: 0xff44ff },
+];
+
+const BUILD_TYPES = [
+  { name: "Wall",  icon: "🧱", cost: 10, w: 4, h: 3.5, d: 0.3 },
+  { name: "Ramp",  icon: "📐", cost: 10 },
+  { name: "Floor", icon: "⬜", cost: 10, w: 4, h: 0.2, d: 4 },
+];
+
+// ─── Three.js Setup ───────────────────────────────────────────
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x70b8e8);
+scene.fog = new THREE.Fog(0x70b8e8, 80, 250);
+
+const camera = new THREE.PerspectiveCamera(80, innerWidth / innerHeight, 0.1, 500);
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+document.body.prepend(renderer.domElement);
+
+// Lighting
+scene.add(new THREE.AmbientLight(0x8899aa, 0.6));
+const sun = new THREE.DirectionalLight(0xffeedd, 1.0);
+sun.position.set(60, 100, 40);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.camera.left = -100; sun.shadow.camera.right = 100;
+sun.shadow.camera.top = 100; sun.shadow.camera.bottom = -100;
+scene.add(sun);
+scene.add(new THREE.HemisphereLight(0x88bbff, 0x445522, 0.4));
+
+// ─── Noise ────────────────────────────────────────────────────
+class Noise {
+  constructor(s=42) {
+    this.p = new Uint8Array(512);
+    const a = new Uint8Array(256);
+    for (let i=0;i<256;i++) a[i]=i;
+    for (let i=255;i>0;i--) { s=(s*16807)%2147483647; const j=s%(i+1);[a[i],a[j]]=[a[j],a[i]]; }
+    for (let i=0;i<512;i++) this.p[i]=a[i&255];
+  }
+  _f(t){return t*t*t*(t*(t*6-15)+10)}
+  _g(h,x,y){const v=h&3;return((v&1)?-x:x)+((v&2)?-y:y)}
+  n2(x,y){
+    const xi=Math.floor(x)&255,yi=Math.floor(y)&255;
+    const xf=x-Math.floor(x),yf=y-Math.floor(y);
+    const u=this._f(xf),v=this._f(yf),p=this.p;
+    return this._l(this._l(this._g(p[p[xi]+yi],xf,yf),this._g(p[p[xi+1]+yi],xf-1,yf),u),
+      this._l(this._g(p[p[xi]+yi+1],xf,yf-1),this._g(p[p[xi+1]+yi+1],xf-1,yf-1),u),v);
+  }
+  _l(a,b,t){return a+t*(b-a)}
+  oct(x,y,n=4){let t=0,f=1,a=1,m=0;for(let i=0;i<n;i++){t+=this.n2(x*f,y*f)*a;m+=a;a*=0.5;f*=2}return t/m}
+}
+const noise = new Noise(42);
+
+// ─── Terrain ──────────────────────────────────────────────────
+function terrainHeight(x, z) {
+  return noise.oct(x*0.01, z*0.01, 5) * 15 + 5 +
+    Math.max(0, noise.oct(x*0.005, z*0.005, 3)) * 10;
+}
+
+function createTerrain() {
+  const res = 200;
+  const geo = new THREE.PlaneGeometry(MAP_SIZE * 2, MAP_SIZE * 2, res, res);
+  geo.rotateX(-Math.PI / 2);
+  const pos = geo.attributes.position;
+  const colors = new Float32Array(pos.count * 3);
+
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i), z = pos.getZ(i);
+    const h = terrainHeight(x, z);
+    pos.setY(i, h);
+    // Color by height
+    if (h < 6) { colors[i*3]=0.76; colors[i*3+1]=0.7; colors[i*3+2]=0.5; }       // sand
+    else if (h < 20) { colors[i*3]=0.25; colors[i*3+1]=0.55; colors[i*3+2]=0.2; } // grass
+    else if (h < 28) { colors[i*3]=0.4; colors[i*3+1]=0.38; colors[i*3+2]=0.35; } // rock
+    else { colors[i*3]=0.9; colors[i*3+1]=0.9; colors[i*3+2]=0.95; }               // snow
+  }
+  geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  geo.computeVertexNormals();
+
+  const mat = new THREE.MeshLambertMaterial({ vertexColors: true });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.receiveShadow = true;
+  scene.add(mesh);
+  return mesh;
+}
+
+// ─── Props (trees, rocks, houses) ─────────────────────────────
+const obstacles = []; // collision boxes {x,z,r}
+const destructibles = []; // {mesh, hp, x, z}
+
+function createTree(x, z) {
+  const h = terrainHeight(x, z);
+  if (h < 7 || h > 25) return;
+  const group = new THREE.Group();
+  group.position.set(x, h, z);
+
+  // Trunk
+  const trunk = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.3, 0.4, 4, 6),
+    new THREE.MeshLambertMaterial({ color: 0x6b4226 })
+  );
+  trunk.position.y = 2;
+  trunk.castShadow = true;
+  group.add(trunk);
+
+  // Leaves
+  const leaves = new THREE.Mesh(
+    new THREE.SphereGeometry(2.5, 6, 5),
+    new THREE.MeshLambertMaterial({ color: 0x2a7a2a })
+  );
+  leaves.position.y = 5;
+  leaves.castShadow = true;
+  group.add(leaves);
+
+  scene.add(group);
+  obstacles.push({ x, z, r: 0.5 });
+  destructibles.push({ mesh: group, hp: 100, x, z, type: 'tree', matType: 'wood', matAmt: 30 });
+}
+
+function createRock(x, z) {
+  const h = terrainHeight(x, z);
+  const sz = 1 + Math.random() * 2;
+  const rock = new THREE.Mesh(
+    new THREE.DodecahedronGeometry(sz, 0),
+    new THREE.MeshLambertMaterial({ color: 0x777777 })
+  );
+  rock.position.set(x, h + sz * 0.4, z);
+  rock.rotation.set(Math.random(), Math.random(), Math.random());
+  rock.castShadow = true;
+  scene.add(rock);
+  obstacles.push({ x, z, r: sz });
+  destructibles.push({ mesh: rock, hp: 200, x, z, type: 'rock', matType: 'stone', matAmt: 20 });
+}
+
+function createHouse(x, z) {
+  const h = terrainHeight(x, z);
+  if (h < 7 || h > 22) return;
+  const group = new THREE.Group();
+  group.position.set(x, h, z);
+
+  // Walls
+  const wallMat = new THREE.MeshLambertMaterial({ color: 0xccbb99 });
+  const wall = new THREE.Mesh(new THREE.BoxGeometry(8, 4, 8), wallMat);
+  wall.position.y = 2;
+  wall.castShadow = true;
+  group.add(wall);
+
+  // Roof
+  const roof = new THREE.Mesh(
+    new THREE.ConeGeometry(6.5, 3, 4),
+    new THREE.MeshLambertMaterial({ color: 0x884422 })
+  );
+  roof.position.y = 5.5;
+  roof.rotation.y = Math.PI / 4;
+  roof.castShadow = true;
+  group.add(roof);
+
+  scene.add(group);
+  obstacles.push({ x, z, r: 5 });
+}
+
+function populateWorld() {
+  // Trees
+  for (let i = 0; i < 300; i++) {
+    const x = (Math.random() - 0.5) * MAP_SIZE * 1.8;
+    const z = (Math.random() - 0.5) * MAP_SIZE * 1.8;
+    createTree(x, z);
+  }
+  // Rocks
+  for (let i = 0; i < 80; i++) {
+    const x = (Math.random() - 0.5) * MAP_SIZE * 1.8;
+    const z = (Math.random() - 0.5) * MAP_SIZE * 1.8;
+    createRock(x, z);
+  }
+  // Houses
+  for (let i = 0; i < 12; i++) {
+    const a = (Math.random() * 2 - 1) * 80;
+    const b = (Math.random() * 2 - 1) * 80;
+    createHouse(a, b);
+  }
+}
+
+// ─── Storm ────────────────────────────────────────────────────
+const stormCircle = new THREE.Mesh(
+  new THREE.RingGeometry(0, MAP_SIZE * 2, 64),
+  new THREE.MeshBasicMaterial({ color: 0x6622aa, transparent: true, opacity: 0.25, side: THREE.DoubleSide })
+);
+stormCircle.rotation.x = -Math.PI / 2;
+stormCircle.position.y = 40;
+scene.add(stormCircle);
+
+const storm = {
+  x: 0, z: 0,
+  currentRadius: MAP_SIZE,
+  targetRadius: MAP_SIZE,
+  phase: 0,
+  timer: STORM_PHASES[0].delay,
+  shrinking: false,
+  shrinkTimer: 0,
+  startRadius: MAP_SIZE,
+  damage: 1,
+};
+
+function updateStorm(dt) {
+  if (storm.phase >= STORM_PHASES.length) return;
+  const phase = STORM_PHASES[storm.phase];
+
+  if (!storm.shrinking) {
+    storm.timer -= dt;
+    if (storm.timer <= 0) {
+      storm.shrinking = true;
+      storm.shrinkTimer = phase.shrinkTime;
+      storm.startRadius = storm.currentRadius;
+      storm.targetRadius = phase.radius;
+      storm.damage = phase.damage;
+    }
+  } else {
+    storm.shrinkTimer -= dt;
+    const t = 1 - Math.max(0, storm.shrinkTimer / STORM_PHASES[storm.phase].shrinkTime);
+    storm.currentRadius = storm.startRadius + (storm.targetRadius - storm.startRadius) * t;
+    if (storm.shrinkTimer <= 0) {
+      storm.currentRadius = storm.targetRadius;
+      storm.shrinking = false;
+      storm.phase++;
+      if (storm.phase < STORM_PHASES.length) {
+        storm.timer = STORM_PHASES[storm.phase].delay;
+      }
+    }
+  }
+
+  // Update visual
+  stormCircle.geometry.dispose();
+  stormCircle.geometry = new THREE.RingGeometry(storm.currentRadius, MAP_SIZE * 2, 64);
+
+  // Update HUD
+  if (storm.shrinking) {
+    document.getElementById('storm-timer').textContent = `Storm closing! ${Math.ceil(storm.shrinkTimer)}s`;
+    document.getElementById('storm-timer').style.color = '#f66';
+  } else if (storm.phase < STORM_PHASES.length) {
+    document.getElementById('storm-timer').textContent = `Safe zone shrinks in ${Math.ceil(storm.timer)}s`;
+    document.getElementById('storm-timer').style.color = '#fff';
+  } else {
+    document.getElementById('storm-timer').textContent = 'Final circle';
+  }
+}
+
+function isInStorm(x, z) {
+  const dx = x - storm.x, dz = z - storm.z;
+  return Math.sqrt(dx*dx + dz*dz) > storm.currentRadius;
+}
+
+// ─── Player ───────────────────────────────────────────────────
+const player = {
+  x: 0, y: 30, z: 0,
+  vx: 0, vy: 0, vz: 0,
+  yaw: 0, pitch: 0,
+  hp: 100, shield: 50,
+  onGround: false,
+  speed: 7, sprintSpeed: 11,
+  jumpSpeed: 9,
+  weaponSlot: 0,
+  buildSlot: -1, // -1 = weapon mode
+  ammo: [30, 5, 1],
+  reloading: [false, false, false],
+  reloadTimers: [0, 0, 0],
+  fireTimer: 0,
+  kills: 0,
+  mats: { wood: 200, stone: 100, metal: 50 },
+  alive: true,
+};
+
+// Player model (3rd would need orbit cam; we do FPS style)
+// We'll go FPS for simplicity
+
+// ─── Builds ───────────────────────────────────────────────────
+const builds = [];
+const buildMat = new THREE.MeshLambertMaterial({ color: 0xb8935a, transparent: true, opacity: 0.85 });
+const buildPreviewMat = new THREE.MeshBasicMaterial({ color: 0x5599ff, transparent: true, opacity: 0.3, wireframe: true });
+let buildPreview = null;
+
+function placeBuild(type, pos, yaw) {
+  const bt = BUILD_TYPES[type];
+  const matKey = ['wood','stone','metal'][Math.floor(Math.random()*3)] || 'wood';
+  if (player.mats.wood < bt.cost && player.mats.stone < bt.cost && player.mats.metal < bt.cost) return;
+
+  // Deduct mats
+  if (player.mats.wood >= bt.cost) player.mats.wood -= bt.cost;
+  else if (player.mats.stone >= bt.cost) player.mats.stone -= bt.cost;
+  else player.mats.metal -= bt.cost;
+
+  let mesh;
+  if (type === 1) { // Ramp
+    const geo = new THREE.BoxGeometry(4, 0.2, 5);
+    mesh = new THREE.Mesh(geo, buildMat.clone());
+    mesh.position.copy(pos);
+    mesh.rotation.y = yaw;
+    mesh.rotation.x = -Math.PI / 6;
+    mesh.position.y += 1.2;
+  } else {
+    mesh = new THREE.Mesh(new THREE.BoxGeometry(bt.w, bt.h, bt.d), buildMat.clone());
+    mesh.position.copy(pos);
+    mesh.rotation.y = yaw;
+    if (type === 0) mesh.position.y += bt.h / 2; // wall
+  }
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  scene.add(mesh);
+  builds.push({ mesh, hp: 150, type });
+  updateMatsHUD();
+}
+
+function updateBuildPreview() {
+  if (buildPreview) { scene.remove(buildPreview); buildPreview = null; }
+  if (player.buildSlot < 0) return;
+
+  const bt = BUILD_TYPES[player.buildSlot];
+  let geo;
+  if (player.buildSlot === 1) {
+    geo = new THREE.BoxGeometry(4, 0.2, 5);
+  } else {
+    geo = new THREE.BoxGeometry(bt.w, bt.h, bt.d);
+  }
+  buildPreview = new THREE.Mesh(geo, buildPreviewMat);
+  scene.add(buildPreview);
+}
+
+function positionBuildPreview() {
+  if (!buildPreview || player.buildSlot < 0) return;
+  const dist = 4;
+  const dx = -Math.sin(player.yaw) * dist;
+  const dz = -Math.cos(player.yaw) * dist;
+  const bx = player.x + dx;
+  const bz = player.z + dz;
+  const h = terrainHeight(bx, bz);
+
+  buildPreview.position.set(bx, h, bz);
+  buildPreview.rotation.y = player.yaw;
+
+  if (player.buildSlot === 0) buildPreview.position.y = h + BUILD_TYPES[0].h / 2;
+  else if (player.buildSlot === 1) { buildPreview.rotation.x = -Math.PI / 6; buildPreview.position.y = h + 1.2; }
+  else buildPreview.position.y = h + player.y - terrainHeight(player.x, player.z) - 0.5;
+}
+
+// ─── Bots ─────────────────────────────────────────────────────
+const bots = [];
+const botGeo = new THREE.BoxGeometry(0.8, 1.8, 0.8);
+
+function spawnBots() {
+  for (let i = 0; i < BOT_COUNT; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const dist = 30 + Math.random() * 100;
+    const x = Math.cos(angle) * dist;
+    const z = Math.sin(angle) * dist;
+    const h = terrainHeight(x, z);
+
+    const bodyColor = new THREE.Color().setHSL(Math.random(), 0.6, 0.5);
+    const mesh = new THREE.Mesh(botGeo, new THREE.MeshLambertMaterial({ color: bodyColor }));
+    mesh.position.set(x, h + 0.9, z);
+    mesh.castShadow = true;
+    scene.add(mesh);
+
+    // Head
+    const head = new THREE.Mesh(
+      new THREE.SphereGeometry(0.35, 8, 6),
+      new THREE.MeshLambertMaterial({ color: 0xffcc99 })
+    );
+    head.position.y = 1.2;
+    mesh.add(head);
+
+    bots.push({
+      mesh, hp: 100, x, z, y: h + 0.9,
+      vx: 0, vz: 0, vy: 0,
+      yaw: Math.random() * Math.PI * 2,
+      alive: true,
+      fireTimer: 0,
+      moveTimer: Math.random() * 3,
+      targetX: x, targetZ: z,
+      buildTimer: 0,
+    });
+  }
+}
+
+function updateBots(dt) {
+  for (const bot of bots) {
+    if (!bot.alive) continue;
+
+    // Terrain
+    const th = terrainHeight(bot.x, bot.z);
+    bot.y = th + 0.9;
+    bot.mesh.position.set(bot.x, bot.y, bot.z);
+
+    // Storm damage
+    if (isInStorm(bot.x, bot.z)) {
+      bot.hp -= storm.damage * dt;
+      if (bot.hp <= 0) {
+        killBot(bot, 'storm');
+        continue;
+      }
+    }
+
+    // Distance to player
+    const dx = player.x - bot.x, dz = player.z - bot.z;
+    const dist = Math.sqrt(dx*dx + dz*dz);
+
+    // AI
+    bot.moveTimer -= dt;
+    if (bot.moveTimer <= 0) {
+      bot.moveTimer = 2 + Math.random() * 3;
+      if (dist < 60 && player.alive) {
+        // Move toward player with some offset
+        bot.targetX = player.x + (Math.random()-0.5) * 15;
+        bot.targetZ = player.z + (Math.random()-0.5) * 15;
+      } else if (isInStorm(bot.x, bot.z)) {
+        // Move toward safe zone center
+        bot.targetX = storm.x + (Math.random()-0.5) * storm.currentRadius;
+        bot.targetZ = storm.z + (Math.random()-0.5) * storm.currentRadius;
+      } else {
+        bot.targetX = bot.x + (Math.random()-0.5) * 40;
+        bot.targetZ = bot.z + (Math.random()-0.5) * 40;
+      }
+    }
+
+    // Move toward target
+    const tdx = bot.targetX - bot.x, tdz = bot.targetZ - bot.z;
+    const td = Math.sqrt(tdx*tdx + tdz*tdz);
+    if (td > 1) {
+      const spd = 4 * dt;
+      bot.x += (tdx / td) * spd;
+      bot.z += (tdz / td) * spd;
+      bot.yaw = Math.atan2(tdx, tdz);
+      bot.mesh.rotation.y = bot.yaw;
+    }
+
+    // Keep in bounds
+    bot.x = Math.max(-MAP_SIZE, Math.min(MAP_SIZE, bot.x));
+    bot.z = Math.max(-MAP_SIZE, Math.min(MAP_SIZE, bot.z));
+
+    // Shoot at player
+    if (dist < 50 && player.alive) {
+      bot.fireTimer -= dt;
+      if (bot.fireTimer <= 0) {
+        bot.fireTimer = 1 + Math.random() * 2;
+        // Chance to hit based on distance
+        const accuracy = Math.max(0.1, 1 - dist / 60);
+        if (Math.random() < accuracy * 0.4) {
+          damagePlayer(8 + Math.floor(Math.random() * 12));
+          createBulletTracer(
+            new THREE.Vector3(bot.x, bot.y + 0.5, bot.z),
+            new THREE.Vector3(player.x, player.y, player.z),
+            0xff4444
+          );
+        } else {
+          // Miss tracer
+          createBulletTracer(
+            new THREE.Vector3(bot.x, bot.y + 0.5, bot.z),
+            new THREE.Vector3(
+              player.x + (Math.random()-0.5)*6,
+              player.y + (Math.random()-0.5)*3,
+              player.z + (Math.random()-0.5)*6
+            ),
+            0xff4444
+          );
+        }
+      }
+    }
+
+    // Bot vs bot combat
+    for (const other of bots) {
+      if (other === bot || !other.alive) continue;
+      const bx = other.x - bot.x, bz = other.z - bot.z;
+      const bd = Math.sqrt(bx*bx + bz*bz);
+      if (bd < 30 && Math.random() < 0.003) {
+        other.hp -= 15 + Math.random() * 20;
+        if (other.hp <= 0) killBot(other, 'bot');
+      }
+    }
+  }
+}
+
+function killBot(bot, killer) {
+  bot.alive = false;
+  scene.remove(bot.mesh);
+  if (killer === 'player') {
+    player.kills++;
+    addKillMsg(`You eliminated Bot`);
+    // Drop mats
+    player.mats.wood += 30;
+    player.mats.stone += 15;
+    player.mats.metal += 10;
+    updateMatsHUD();
+  } else if (killer === 'bot') {
+    addKillMsg('Bot eliminated Bot');
+  } else {
+    addKillMsg('Bot was eliminated by the storm');
+  }
+  updateAliveCount();
+}
+
+// ─── Bullet Tracers ───────────────────────────────────────────
+const tracers = [];
+
+function createBulletTracer(from, to, color) {
+  const geo = new THREE.BufferGeometry().setFromPoints([from, to]);
+  const mat = new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.8 });
+  const line = new THREE.Line(geo, mat);
+  scene.add(line);
+  tracers.push({ mesh: line, life: 0.15 });
+}
+
+function updateTracers(dt) {
+  for (let i = tracers.length - 1; i >= 0; i--) {
+    tracers[i].life -= dt;
+    tracers[i].mesh.material.opacity = Math.max(0, tracers[i].life / 0.15);
+    if (tracers[i].life <= 0) {
+      scene.remove(tracers[i].mesh);
+      tracers[i].mesh.geometry.dispose();
+      tracers.splice(i, 1);
+    }
+  }
+}
+
+// ─── Player Shooting ──────────────────────────────────────────
+function playerShoot() {
+  if (player.buildSlot >= 0) {
+    // Build mode
+    if (buildPreview) {
+      placeBuild(player.buildSlot, buildPreview.position.clone(), player.yaw);
+    }
+    return;
+  }
+
+  const w = WEAPONS[player.weaponSlot];
+  if (player.reloading[player.weaponSlot]) return;
+  if (player.ammo[player.weaponSlot] <= 0) {
+    startReload();
+    return;
+  }
+  if (player.fireTimer > 0) return;
+
+  player.fireTimer = w.fireRate;
+  player.ammo[player.weaponSlot]--;
+  updateActionBar();
+
+  const pellets = w.pellets || 1;
+  for (let p = 0; p < pellets; p++) {
+    const spread = w.spread;
+    const dx = -Math.sin(player.yaw + (Math.random()-0.5)*spread) * Math.cos(player.pitch + (Math.random()-0.5)*spread);
+    const dy = Math.sin(player.pitch + (Math.random()-0.5)*spread);
+    const dz = -Math.cos(player.yaw + (Math.random()-0.5)*spread) * Math.cos(player.pitch + (Math.random()-0.5)*spread);
+
+    const from = new THREE.Vector3(player.x, player.y, player.z);
+    const to = new THREE.Vector3(
+      player.x + dx * w.range,
+      player.y + dy * w.range,
+      player.z + dz * w.range
+    );
+
+    // Check hits on bots
+    let hitBot = null, hitDist = w.range;
+    for (const bot of bots) {
+      if (!bot.alive) continue;
+      // Simple ray-sphere intersection
+      const bx = bot.x - player.x, bz = bot.z - player.z, by = bot.y - player.y;
+      const t = (bx*dx + by*dy + bz*dz); // project onto ray
+      if (t < 0 || t > hitDist) continue;
+      const px = bx - dx*t, py = by - dy*t, pz = bz - dz*t;
+      const d2 = px*px + py*py + pz*pz;
+      if (d2 < 1.5) { // hit radius
+        hitDist = t;
+        hitBot = bot;
+      }
+    }
+
+    // Check hits on destructibles
+    let hitDestr = null, hitDestrDist = hitDist;
+    for (const d of destructibles) {
+      if (!d.mesh.parent) continue;
+      const bx = d.x - player.x, bz = d.z - player.z;
+      const t = (bx*dx + bz*dz);
+      if (t < 0 || t > hitDestrDist) continue;
+      const px = bx - dx*t, pz = bz - dz*t;
+      if (px*px + pz*pz < 4) {
+        hitDestrDist = t;
+        hitDestr = d;
+      }
+    }
+
+    if (hitBot && hitDist <= hitDestrDist) {
+      const dmg = w.damage / (pellets > 1 ? pellets * 0.6 : 1);
+      hitBot.hp -= dmg;
+      showHitmarker();
+      to.set(hitBot.x, hitBot.y, hitBot.z);
+      if (hitBot.hp <= 0) killBot(hitBot, 'player');
+    } else if (hitDestr) {
+      hitDestr.hp -= w.damage;
+      showHitmarker();
+      if (hitDestr.hp <= 0) {
+        scene.remove(hitDestr.mesh);
+        player.mats[hitDestr.matType] = (player.mats[hitDestr.matType] || 0) + hitDestr.matAmt;
+        updateMatsHUD();
+      }
+      to.set(player.x + dx*hitDestrDist, player.y + dy*hitDestrDist, player.z + dz*hitDestrDist);
+    }
+
+    createBulletTracer(from, to, w.color);
+  }
+
+  if (player.ammo[player.weaponSlot] <= 0) startReload();
+}
+
+function startReload() {
+  const i = player.weaponSlot;
+  if (player.reloading[i]) return;
+  player.reloading[i] = true;
+  player.reloadTimers[i] = WEAPONS[i].reloadTime;
+}
+
+function updateReloading(dt) {
+  for (let i = 0; i < 3; i++) {
+    if (player.reloading[i]) {
+      player.reloadTimers[i] -= dt;
+      if (player.reloadTimers[i] <= 0) {
+        player.reloading[i] = false;
+        player.ammo[i] = WEAPONS[i].magSize;
+        updateActionBar();
+      }
+    }
+  }
+}
+
+// ─── Player Damage ────────────────────────────────────────────
+function damagePlayer(dmg) {
+  if (!player.alive) return;
+  // Shield absorbs first
+  if (player.shield > 0) {
+    const shieldDmg = Math.min(player.shield, dmg);
+    player.shield -= shieldDmg;
+    dmg -= shieldDmg;
+  }
+  player.hp -= dmg;
+  updateBars();
+  showDamageFlash();
+  if (player.hp <= 0) {
+    player.hp = 0;
+    player.alive = false;
+    showGameOver(false);
+  }
+}
+
+function showDamageFlash() {
+  const el = document.getElementById('damage-flash');
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 200);
+}
+
+function showHitmarker() {
+  const el = document.getElementById('hitmarker');
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 150);
+}
+
+// ─── Input ────────────────────────────────────────────────────
+const keys = {};
+let mouseLocked = false;
+let mouseDown = false;
+
+document.addEventListener('keydown', e => {
+  keys[e.code] = true;
+  if (e.key >= '1' && e.key <= '3') {
+    player.weaponSlot = parseInt(e.key) - 1;
+    player.buildSlot = -1;
+    updateActionBar();
+    updateBuildPreview();
+  }
+  if (e.key >= '4' && e.key <= '6') {
+    player.buildSlot = parseInt(e.key) - 4;
+    updateActionBar();
+    updateBuildPreview();
+  }
+  if (e.code === 'KeyQ') {
+    player.buildSlot = player.buildSlot === 0 ? -1 : 0;
+    if (player.buildSlot < 0) player.weaponSlot = 0;
+    updateActionBar();
+    updateBuildPreview();
+  }
+  if (e.code === 'KeyR') startReload();
+  if (e.code === 'KeyF') {
+    scene.fog = scene.fog ? null : new THREE.Fog(0x70b8e8, 80, 250);
+  }
+});
+document.addEventListener('keyup', e => { keys[e.code] = false; });
+
+document.addEventListener('mousemove', e => {
+  if (!mouseLocked) return;
+  player.yaw -= e.movementX * 0.002;
+  player.pitch -= e.movementY * 0.002;
+  player.pitch = Math.max(-1.4, Math.min(1.4, player.pitch));
+});
+
+renderer.domElement.addEventListener('mousedown', e => {
+  if (!mouseLocked) { renderer.domElement.requestPointerLock(); return; }
+  if (e.button === 0) { mouseDown = true; playerShoot(); }
+});
+renderer.domElement.addEventListener('mouseup', e => { if (e.button === 0) mouseDown = false; });
+renderer.domElement.addEventListener('contextmenu', e => e.preventDefault());
+document.addEventListener('pointerlockchange', () => { mouseLocked = !!document.pointerLockElement; });
+
+// ─── Player Physics ───────────────────────────────────────────
+function updatePlayer(dt) {
+  if (!player.alive) return;
+  dt = Math.min(dt, 0.05);
+
+  let mx = 0, mz = 0;
+  if (keys['KeyW']) { mx -= Math.sin(player.yaw); mz -= Math.cos(player.yaw); }
+  if (keys['KeyS']) { mx += Math.sin(player.yaw); mz += Math.cos(player.yaw); }
+  if (keys['KeyA']) { mx -= Math.cos(player.yaw); mz += Math.sin(player.yaw); }
+  if (keys['KeyD']) { mx += Math.cos(player.yaw); mz -= Math.sin(player.yaw); }
+  const len = Math.sqrt(mx*mx + mz*mz);
+  if (len > 0) { mx /= len; mz /= len; }
+
+  const spd = keys['ShiftLeft'] ? player.sprintSpeed : player.speed;
+  player.vx = mx * spd;
+  player.vz = mz * spd;
+
+  // Gravity & jump
+  player.vy -= 22 * dt;
+  if (keys['Space'] && player.onGround) player.vy = player.jumpSpeed;
+
+  // Move
+  player.x += player.vx * dt;
+  player.z += player.vz * dt;
+
+  // Terrain collision
+  const th = terrainHeight(player.x, player.z) + 1.7;
+  player.onGround = false;
+
+  // Check build collisions (stand on ramps/floors)
+  let buildFloor = -999;
+  for (const b of builds) {
+    const bp = b.mesh.position;
+    const dx = Math.abs(player.x - bp.x), dz = Math.abs(player.z - bp.z);
+    if (b.type === 2 && dx < 2 && dz < 2) { // Floor
+      buildFloor = Math.max(buildFloor, bp.y + 0.1);
+    }
+    if (b.type === 1 && dx < 2.5 && dz < 2.5) { // Ramp - simplified
+      const localZ = (player.z - bp.z) * Math.cos(b.mesh.rotation.y) + (player.x - bp.x) * Math.sin(b.mesh.rotation.y);
+      const rampH = bp.y + (localZ / 2.5) * 1.5;
+      if (rampH > buildFloor) buildFloor = rampH;
+    }
+    if (b.type === 0 && dx < 2.1 && dz < 0.5) { // Wall collision
+      player.x -= player.vx * dt * 0.5;
+      player.z -= player.vz * dt * 0.5;
+    }
+  }
+
+  const floor = Math.max(th, buildFloor);
+
+  if (player.y + player.vy * dt <= floor) {
+    player.y = floor;
+    player.vy = 0;
+    player.onGround = true;
+  } else {
+    player.y += player.vy * dt;
+  }
+
+  // Clamp to map
+  player.x = Math.max(-MAP_SIZE, Math.min(MAP_SIZE, player.x));
+  player.z = Math.max(-MAP_SIZE, Math.min(MAP_SIZE, player.z));
+
+  // Storm damage
+  if (isInStorm(player.x, player.z)) {
+    damagePlayer(storm.damage * dt);
+  }
+
+  // Auto fire
+  player.fireTimer -= dt;
+  if (mouseDown && player.buildSlot < 0 && WEAPONS[player.weaponSlot].auto && player.fireTimer <= 0) {
+    playerShoot();
+  }
+
+  updateReloading(dt);
+
+  // Build preview
+  positionBuildPreview();
+}
+
+// ─── Minimap ──────────────────────────────────────────────────
+const mmCanvas = document.getElementById('minimap-canvas');
+const mmCtx = mmCanvas.getContext('2d');
+
+function drawMinimap() {
+  mmCtx.fillStyle = '#1a2a1a';
+  mmCtx.fillRect(0, 0, 140, 140);
+
+  const scale = 140 / (MAP_SIZE * 2);
+  const ox = 70, oy = 70;
+
+  // Storm circle
+  mmCtx.strokeStyle = '#a44fff';
+  mmCtx.lineWidth = 2;
+  mmCtx.beginPath();
+  mmCtx.arc(
+    ox + storm.x * scale,
+    oy + storm.z * scale,
+    storm.currentRadius * scale, 0, Math.PI * 2
+  );
+  mmCtx.stroke();
+
+  // Bots
+  for (const bot of bots) {
+    if (!bot.alive) continue;
+    mmCtx.fillStyle = '#f44';
+    mmCtx.fillRect(ox + bot.x * scale - 1, oy + bot.z * scale - 1, 3, 3);
+  }
+
+  // Player
+  mmCtx.fillStyle = '#4f4';
+  mmCtx.beginPath();
+  mmCtx.arc(ox + player.x * scale, oy + player.z * scale, 3, 0, Math.PI * 2);
+  mmCtx.fill();
+
+  // Player direction
+  const dLen = 8;
+  mmCtx.strokeStyle = '#4f4';
+  mmCtx.lineWidth = 1;
+  mmCtx.beginPath();
+  mmCtx.moveTo(ox + player.x * scale, oy + player.z * scale);
+  mmCtx.lineTo(
+    ox + player.x * scale - Math.sin(player.yaw) * dLen,
+    oy + player.z * scale - Math.cos(player.yaw) * dLen
+  );
+  mmCtx.stroke();
+}
+
+// ─── HUD ──────────────────────────────────────────────────────
+function updateBars() {
+  document.getElementById('hp-bar').style.width = Math.max(0, player.hp) + '%';
+  document.getElementById('hp-val').textContent = Math.max(0, Math.ceil(player.hp));
+  document.getElementById('shield-bar').style.width = Math.max(0, player.shield) + '%';
+  document.getElementById('shield-val').textContent = Math.max(0, Math.ceil(player.shield));
+}
+
+function updateMatsHUD() {
+  document.getElementById('mat-wood').textContent = player.mats.wood;
+  document.getElementById('mat-stone').textContent = player.mats.stone;
+  document.getElementById('mat-metal').textContent = player.mats.metal;
+}
+
+function updateAliveCount() {
+  const alive = bots.filter(b => b.alive).length + (player.alive ? 1 : 0);
+  document.getElementById('alive-count').innerHTML = alive + ' <span>alive</span>';
+  if (alive === 1 && player.alive) {
+    showGameOver(true);
+  }
+}
+
+function createActionBar() {
+  const bar = document.getElementById('action-bar');
+  bar.innerHTML = '';
+  // Weapons
+  WEAPONS.forEach((w, i) => {
+    const slot = document.createElement('div');
+    slot.className = 'slot weapon' + (player.buildSlot < 0 && player.weaponSlot === i ? ' active' : '');
+    slot.innerHTML = `<span class="skey">${i+1}</span><span class="icon">${w.icon}</span><span class="sname">${w.name}</span><span class="ammo">${player.ammo[i]}</span>`;
+    slot.onclick = () => { player.weaponSlot = i; player.buildSlot = -1; updateActionBar(); updateBuildPreview(); };
+    bar.appendChild(slot);
+  });
+  // Separator
+  const sep = document.createElement('div');
+  sep.style.cssText = 'width:2px;margin:0 4px;background:rgba(255,255,255,0.15);border-radius:2px;';
+  bar.appendChild(sep);
+  // Build
+  BUILD_TYPES.forEach((b, i) => {
+    const slot = document.createElement('div');
+    slot.className = 'slot build' + (player.buildSlot === i ? ' active' : '');
+    slot.innerHTML = `<span class="skey">${i+4}</span><span class="icon">${b.icon}</span><span class="sname">${b.name}</span>`;
+    slot.onclick = () => { player.buildSlot = i; updateActionBar(); updateBuildPreview(); };
+    bar.appendChild(slot);
+  });
+}
+
+function updateActionBar() {
+  createActionBar();
+}
+
+function addKillMsg(msg) {
+  const el = document.createElement('div');
+  el.className = 'kill-msg';
+  el.textContent = msg;
+  document.getElementById('killfeed').appendChild(el);
+  setTimeout(() => el.remove(), 3200);
+}
+
+// ─── Game Over ────────────────────────────────────────────────
+function showGameOver(won) {
+  const el = document.getElementById('game-over');
+  el.classList.add('show');
+  document.getElementById('go-title').textContent = won ? '🏆 VICTORY ROYALE!' : '💀 ELIMINATED';
+  document.getElementById('go-title').style.color = won ? '#ffd700' : '#f44';
+  document.getElementById('go-stats').innerHTML =
+    `Eliminations: <b>${player.kills}</b><br>` +
+    `Placement: <b>#${won ? 1 : bots.filter(b=>b.alive).length + 1}</b> / ${BOT_COUNT+1}`;
+  document.exitPointerLock();
+}
+
+document.getElementById('retry-btn').onclick = () => {
+  location.reload();
+};
+
+// ─── Game Loop ────────────────────────────────────────────────
+let lastTime = 0, frameCount = 0, fpsTime = 0, fps = 0;
+let running = false;
+
+function gameLoop(t) {
+  if (!running) return;
+  requestAnimationFrame(gameLoop);
+  const dt = Math.min((t - lastTime) / 1000, 0.1);
+  lastTime = t;
+
+  frameCount++; fpsTime += dt;
+  if (fpsTime >= 1) { fps = frameCount; frameCount = 0; fpsTime = 0; }
+
+  updatePlayer(dt);
+  updateBots(dt);
+  updateStorm(dt);
+  updateTracers(dt);
+
+  // Camera
+  camera.position.set(player.x, player.y, player.z);
+  camera.rotation.order = 'YXZ';
+  camera.rotation.y = player.yaw;
+  camera.rotation.x = player.pitch;
+
+  drawMinimap();
+  renderer.render(scene, camera);
+}
+
+// ─── Init ─────────────────────────────────────────────────────
+window.addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+document.getElementById('play-btn').onclick = () => {
+  document.getElementById('overlay').classList.add('hidden');
+  renderer.domElement.requestPointerLock();
+
+  createTerrain();
+  populateWorld();
+  spawnBots();
+
+  player.x = (Math.random()-0.5) * 40;
+  player.z = (Math.random()-0.5) * 40;
+  player.y = terrainHeight(player.x, player.z) + 2;
+
+  createActionBar();
+  updateBars();
+  updateMatsHUD();
+  updateAliveCount();
+
+  running = true;
+  lastTime = performance.now();
+  requestAnimationFrame(gameLoop);
+};
+</script>
+</body>
+</html>
