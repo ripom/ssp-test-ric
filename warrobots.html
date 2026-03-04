@@ -2,12 +2,12 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>War Robots</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{overflow:hidden;background:#000;font-family:'Segoe UI',Arial,sans-serif;user-select:none;cursor:crosshair}
-canvas{display:block}
+body{overflow:hidden;background:#000;font-family:'Segoe UI',Arial,sans-serif;user-select:none;cursor:crosshair;touch-action:none}
+canvas{display:block;touch-action:none}
 
 /* ───── Crosshair ──────────────────────── */
 #crosshair{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none;z-index:10}
@@ -113,6 +113,50 @@ canvas{display:block}
 #respawn.show{display:block}
 #respawn .rs-title{font-size:28px;color:#f44;font-weight:bold;margin-bottom:6px}
 #respawn .rs-timer{font-size:48px;font-weight:900}
+
+/* ───── Mobile Controls ────────────────── */
+.mobile-only{display:none!important}
+#m-joystick{position:fixed;bottom:30px;left:20px;width:130px;height:130px;border-radius:50%;background:rgba(255,255,255,0.08);border:2px solid rgba(255,255,255,0.18);z-index:20;touch-action:none}
+#m-joy-knob{position:absolute;width:50px;height:50px;border-radius:50%;background:rgba(255,200,100,0.45);border:2px solid rgba(255,150,50,0.6);top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none}
+#m-look{position:fixed;top:0;right:0;width:50vw;height:100vh;z-index:12;touch-action:none}
+.m-btn{position:fixed;z-index:20;width:56px;height:56px;border-radius:50%;background:rgba(255,255,255,0.1);border:2px solid rgba(255,255,255,0.25);display:flex!important;align-items:center;justify-content:center;font-size:22px;color:#fff;touch-action:none;-webkit-tap-highlight-color:transparent}
+.m-btn:active,.m-btn.active{background:rgba(255,150,50,0.35);border-color:#fa4}
+#m-fire{bottom:40px;right:30px;width:72px;height:72px;font-size:28px;background:rgba(255,50,30,0.2);border-color:rgba(255,80,40,0.5)}
+#m-jump{bottom:130px;right:30px}
+#m-reload{bottom:130px;right:100px}
+#m-ability{bottom:40px;right:120px;background:rgba(255,200,0,0.15);border-color:rgba(255,180,0,0.4)}
+#m-sprint{bottom:180px;left:80px;width:46px;height:46px;font-size:16px}
+#m-weapon{bottom:200px;right:30px;width:46px;height:46px;font-size:14px}
+
+@media(max-width:768px){
+  .mobile-only{display:flex!important}
+  .info-box{display:none}
+  #overlay h1{font-size:32px;letter-spacing:4px}
+  .mech-select{flex-wrap:wrap;justify-content:center;gap:8px}
+  .mech-card{width:100px;padding:8px}
+  .mech-card .m-icon{font-size:32px}
+  .mech-card .m-name{font-size:12px}
+  .mech-card .m-stat{font-size:8px}
+  #play-btn{padding:12px 40px;font-size:16px}
+  #bars{width:200px}
+  #weapon-bar .wslot{width:50px;height:38px}
+  #weapon-bar .w-icon{font-size:16px}
+  #weapon-bar .w-name{font-size:7px}
+  #radar{width:90px;height:90px;top:8px;right:8px}
+  #radar canvas{width:100%;height:100%}
+  #score-hud .team-score{font-size:20px}
+  #mech-hud{bottom:170px;left:8px}
+  #ability{bottom:170px;right:8px}
+  #crosshair{display:none}
+  #hud{padding-bottom:4px}
+  .ab-circle{width:40px;height:40px;font-size:18px}
+}
+@media(max-width:480px){
+  #overlay h1{font-size:24px}
+  .mech-card{width:80px;padding:6px}
+  .mech-card .m-icon{font-size:24px}
+  #bars{width:160px}
+}
 </style>
 </head>
 <body>
@@ -168,6 +212,16 @@ canvas{display:block}
     <button id="retry-btn">PLAY AGAIN</button>
   </div>
 </div>
+
+<!-- ═══════ Mobile Controls ═══════ -->
+<div id="m-joystick" class="mobile-only"><div id="m-joy-knob"></div></div>
+<div id="m-look" class="mobile-only"></div>
+<div id="m-fire" class="m-btn mobile-only">🔥</div>
+<div id="m-jump" class="m-btn mobile-only">⬆</div>
+<div id="m-reload" class="m-btn mobile-only">🔄</div>
+<div id="m-ability" class="m-btn mobile-only">⚡</div>
+<div id="m-sprint" class="m-btn mobile-only">🏃</div>
+<div id="m-weapon" class="m-btn mobile-only">🔫</div>
 
 <!-- ═══════ Start Screen ═══════ -->
 <div id="overlay">
@@ -1097,6 +1151,11 @@ function updatePlayer(dt) {
   if (keys['KeyS']) { mx += Math.sin(player.yaw); mz += Math.cos(player.yaw); }
   if (keys['KeyA']) { mx -= Math.cos(player.yaw); mz += Math.sin(player.yaw); }
   if (keys['KeyD']) { mx += Math.cos(player.yaw); mz -= Math.sin(player.yaw); }
+  // Mobile joystick input
+  if (isMobile && (joyVec.x !== 0 || joyVec.y !== 0)) {
+    mx = -(joyVec.y * Math.sin(player.yaw) + joyVec.x * Math.cos(player.yaw));
+    mz = -(joyVec.y * Math.cos(player.yaw) - joyVec.x * Math.sin(player.yaw));
+  }
   const len = Math.sqrt(mx*mx+mz*mz);
   if (len > 0) { mx /= len; mz /= len; }
 
@@ -1106,13 +1165,13 @@ function updatePlayer(dt) {
     player.dashDir = null;
   }
 
-  const spd = keys['ShiftLeft'] ? player.sprintSpeed : player.speed;
+  const spd = (keys['ShiftLeft'] || mSprinting) ? player.sprintSpeed : player.speed;
   player.vx = mx * spd;
   player.vz = mz * spd;
 
   // Gravity & jump jets
   player.vy -= 20 * dt;
-  if (keys['Space'] && player.onGround) player.vy = player.jumpForce;
+  if ((keys['Space'] || mJumping) && player.onGround) player.vy = player.jumpForce;
 
   player.x += player.vx * dt;
   player.z += player.vz * dt;
@@ -1200,6 +1259,7 @@ function activateAbility() {
 // ─── Input ────────────────────────────────────────────────────
 const keys = {};
 let mouseLocked = false, mouseDown = false;
+const isMobile = matchMedia('(pointer: coarse)').matches;
 
 document.addEventListener('keydown', e => {
   keys[e.code] = true;
@@ -1227,12 +1287,114 @@ document.addEventListener('mousemove', e => {
 });
 
 renderer.domElement.addEventListener('mousedown', e => {
-  if (!mouseLocked) { renderer.domElement.requestPointerLock(); return; }
+  if (!mouseLocked && !isMobile) { renderer.domElement.requestPointerLock(); return; }
   if (e.button === 0) { mouseDown = true; playerShoot(); }
 });
 renderer.domElement.addEventListener('mouseup', e => { if (e.button === 0) mouseDown = false; });
 renderer.domElement.addEventListener('contextmenu', e => e.preventDefault());
 document.addEventListener('pointerlockchange', () => { mouseLocked = !!document.pointerLockElement; });
+
+// ─── Mobile Touch Controls ────────────────────────────────────
+const joyVec = { x: 0, y: 0 };
+let mSprinting = false, mJumping = false, mFiring = false;
+
+if (isMobile) {
+  mouseLocked = true; // skip pointer lock requirement on mobile
+
+  // Virtual joystick
+  const joystick = document.getElementById('m-joystick');
+  const knob = document.getElementById('m-joy-knob');
+  let joyId = null, joyOrigin = { x: 0, y: 0 };
+  const JOY_R = 50;
+
+  joystick.addEventListener('touchstart', e => {
+    e.preventDefault();
+    const t = e.changedTouches[0];
+    joyId = t.identifier;
+    const r = joystick.getBoundingClientRect();
+    joyOrigin = { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+  }, { passive: false });
+  joystick.addEventListener('touchmove', e => {
+    e.preventDefault();
+    for (const t of e.changedTouches) {
+      if (t.identifier !== joyId) continue;
+      let dx = t.clientX - joyOrigin.x, dy = t.clientY - joyOrigin.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist > JOY_R) { dx *= JOY_R / dist; dy *= JOY_R / dist; }
+      knob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+      joyVec.x = dx / JOY_R;
+      joyVec.y = dy / JOY_R;
+    }
+  }, { passive: false });
+  const resetJoy = () => { joyId = null; joyVec.x = joyVec.y = 0; knob.style.transform = 'translate(-50%,-50%)'; };
+  joystick.addEventListener('touchend', resetJoy);
+  joystick.addEventListener('touchcancel', resetJoy);
+
+  // Touch look zone
+  const lookZone = document.getElementById('m-look');
+  let lookId = null, lastLook = { x: 0, y: 0 };
+  lookZone.addEventListener('touchstart', e => {
+    e.preventDefault();
+    const t = e.changedTouches[0];
+    lookId = t.identifier;
+    lastLook = { x: t.clientX, y: t.clientY };
+  }, { passive: false });
+  lookZone.addEventListener('touchmove', e => {
+    e.preventDefault();
+    for (const t of e.changedTouches) {
+      if (t.identifier !== lookId) continue;
+      const dx = t.clientX - lastLook.x, dy = t.clientY - lastLook.y;
+      player.yaw -= dx * 0.004;
+      player.pitch -= dy * 0.004;
+      player.pitch = Math.max(-1.2, Math.min(1.2, player.pitch));
+      lastLook = { x: t.clientX, y: t.clientY };
+    }
+  }, { passive: false });
+  lookZone.addEventListener('touchend', e => {
+    for (const t of e.changedTouches) { if (t.identifier === lookId) lookId = null; }
+  });
+
+  // Fire button
+  const fireBtn = document.getElementById('m-fire');
+  fireBtn.addEventListener('touchstart', e => { e.preventDefault(); mFiring = true; mouseDown = true; playerShoot(); fireBtn.classList.add('active'); }, { passive: false });
+  fireBtn.addEventListener('touchend', e => { e.preventDefault(); mFiring = false; mouseDown = false; fireBtn.classList.remove('active'); });
+  fireBtn.addEventListener('touchcancel', () => { mFiring = false; mouseDown = false; fireBtn.classList.remove('active'); });
+
+  // Jump button
+  const jumpBtn = document.getElementById('m-jump');
+  jumpBtn.addEventListener('touchstart', e => { e.preventDefault(); mJumping = true; jumpBtn.classList.add('active'); }, { passive: false });
+  jumpBtn.addEventListener('touchend', () => { mJumping = false; jumpBtn.classList.remove('active'); });
+  jumpBtn.addEventListener('touchcancel', () => { mJumping = false; jumpBtn.classList.remove('active'); });
+
+  // Reload button
+  const reloadBtn = document.getElementById('m-reload');
+  reloadBtn.addEventListener('touchstart', e => { e.preventDefault(); startPlayerReload(); reloadBtn.classList.add('active'); }, { passive: false });
+  reloadBtn.addEventListener('touchend', () => { reloadBtn.classList.remove('active'); });
+
+  // Ability button
+  const abilityBtn = document.getElementById('m-ability');
+  abilityBtn.addEventListener('touchstart', e => { e.preventDefault(); activateAbility(); abilityBtn.classList.add('active'); }, { passive: false });
+  abilityBtn.addEventListener('touchend', () => { abilityBtn.classList.remove('active'); });
+
+  // Sprint button (toggle)
+  const sprintBtn = document.getElementById('m-sprint');
+  sprintBtn.addEventListener('touchstart', e => {
+    e.preventDefault();
+    mSprinting = !mSprinting;
+    sprintBtn.classList.toggle('active', mSprinting);
+  }, { passive: false });
+
+  // Weapon cycle button
+  const weaponBtn = document.getElementById('m-weapon');
+  weaponBtn.addEventListener('touchstart', e => {
+    e.preventDefault();
+    const maxSlots = MECHS[player.mechType].weapons.length;
+    player.weaponSlot = (player.weaponSlot + 1) % maxSlots;
+    updateWeaponBar();
+    weaponBtn.classList.add('active');
+  }, { passive: false });
+  weaponBtn.addEventListener('touchend', () => { weaponBtn.classList.remove('active'); });
+}
 
 // ─── HUD Updates ──────────────────────────────────────────────
 function updateBars() {
@@ -1407,7 +1569,7 @@ buildMechSelect();
 // ─── Start ────────────────────────────────────────────────────
 document.getElementById('play-btn').onclick = () => {
   document.getElementById('overlay').classList.add('hidden');
-  renderer.domElement.requestPointerLock();
+  if (!isMobile) renderer.domElement.requestPointerLock();
 
   // Create world
   createArena();
@@ -1473,6 +1635,13 @@ window.addEventListener('resize', () => {
   camera.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(innerWidth, innerHeight);
+});
+window.addEventListener('orientationchange', () => {
+  setTimeout(() => {
+    camera.aspect = innerWidth / innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(innerWidth, innerHeight);
+  }, 200);
 });
 </script>
 </body>

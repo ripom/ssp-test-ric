@@ -2,12 +2,12 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Fortnite JS</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { overflow: hidden; background: #000; font-family: 'Segoe UI', Arial, sans-serif; user-select: none; }
-  canvas { display: block; }
+  body { overflow: hidden; background: #000; font-family: 'Segoe UI', Arial, sans-serif; user-select: none; touch-action:none; -webkit-tap-highlight-color:transparent; }
+  canvas { display: block; touch-action:none; }
 
   /* Crosshair */
   #crosshair {
@@ -191,6 +191,61 @@
     transition: opacity 0.1s;
   }
   #hitmarker.show { opacity: 1; }
+
+  /* ═══ Mobile Controls ═══ */
+  .mobile-only{display:none}
+  @media(pointer:coarse){.mobile-only{display:block}.desktop-only{display:none}}
+  #m-joystick{position:fixed;bottom:20px;left:20px;width:120px;height:120px;z-index:30;
+    border-radius:50%;background:rgba(255,255,255,0.08);border:2px solid rgba(255,255,255,0.15)}
+  #m-joy-knob{position:absolute;width:46px;height:46px;border-radius:50%;
+    background:rgba(255,255,255,0.25);border:2px solid rgba(255,255,255,0.4);
+    top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none}
+  #m-look{position:fixed;top:0;right:0;width:50vw;height:70vh;z-index:25}
+  .m-btn{position:fixed;z-index:30;width:52px;height:52px;border-radius:50%;
+    background:rgba(255,255,255,0.1);border:2px solid rgba(255,255,255,0.2);
+    color:#fff;font-size:18px;display:flex;align-items:center;justify-content:center;cursor:pointer}
+  .m-btn:active{background:rgba(255,255,255,0.3)}
+  #m-shoot{bottom:20px;right:20px;width:64px;height:64px;font-size:22px;
+    background:rgba(255,60,60,0.2);border-color:rgba(255,60,60,0.4)}
+  #m-jump{bottom:90px;right:20px}
+  #m-reload{bottom:90px;right:82px;font-size:14px}
+  #m-build{bottom:20px;right:90px;font-size:14px}
+  #m-sprint{bottom:20px;left:155px;font-size:14px}
+  @media(max-width:768px){
+    #bars{width:200px}
+    .slot{width:44px;height:40px}
+    .slot .icon{font-size:16px}
+    .slot .sname{font-size:7px}
+    .slot .skey{font-size:7px}
+    .slot .ammo{font-size:7px}
+    #minimap{width:100px;height:100px}
+    #alive-count{font-size:16px}
+    #storm-timer{font-size:11px;padding:3px 8px}
+    #overlay h1{font-size:36px}
+    #overlay .info{font-size:12px;padding:14px 18px;max-width:90vw}
+    #overlay button{font-size:16px;padding:12px 40px}
+    #materials{bottom:50px;right:8px}
+    .mat-row{font-size:11px}
+    #killfeed{font-size:10px}
+    .kill-msg{padding:2px 6px;font-size:10px}
+    .go-content h2{font-size:32px}
+    .go-stats{font-size:13px}
+  }
+  @media(max-width:480px){
+    #bars{width:160px}
+    .slot{width:36px;height:34px}
+    .slot .icon{font-size:14px}
+    #minimap{width:80px;height:80px;top:6px;left:6px}
+    #overlay h1{font-size:28px}
+    #m-joystick{width:100px;height:100px;bottom:14px;left:14px}
+    #m-joy-knob{width:38px;height:38px}
+    .m-btn{width:44px;height:44px;font-size:16px}
+    #m-shoot{width:54px;height:54px;font-size:18px;bottom:14px;right:14px}
+    #m-jump{bottom:76px;right:14px}
+    #m-reload{bottom:76px;right:66px;font-size:12px}
+    #m-build{bottom:14px;right:76px;font-size:12px}
+    #m-sprint{bottom:14px;left:126px;font-size:12px}
+  }
 </style>
 </head>
 <body>
@@ -214,6 +269,15 @@
   <div id="action-bar"></div>
 </div>
 
+<!-- Mobile Controls -->
+<div id="m-joystick" class="mobile-only"><div id="m-joy-knob"></div></div>
+<div id="m-look" class="mobile-only"></div>
+<div id="m-shoot" class="m-btn mobile-only">🔫</div>
+<div id="m-jump" class="m-btn mobile-only">⬆</div>
+<div id="m-reload" class="m-btn mobile-only">🔄R</div>
+<div id="m-build" class="m-btn mobile-only">🚧Q</div>
+<div id="m-sprint" class="m-btn mobile-only">🏃</div>
+
 <div id="materials">
   <div class="mat-row"><span class="mat-icon">🪵</span> <span id="mat-wood">200</span></div>
   <div class="mat-row"><span class="mat-icon">🪨</span> <span id="mat-stone">100</span></div>
@@ -235,7 +299,7 @@
 <div id="overlay">
   <h1>FORTNITE</h1>
   <div class="sub">JavaScript Battle Royale</div>
-  <div class="info">
+  <div class="info desktop-only">
     <b>WASD</b> — Move &nbsp; <b>Space</b> — Jump &nbsp; <b>Shift</b> — Sprint<br>
     <b>Mouse</b> — Aim &nbsp; <b>Left Click</b> — Shoot / Build<br>
     <b>1-3</b> — Weapons &nbsp; <b>4-6</b> — Build (Wall/Ramp/Floor)<br>
@@ -243,6 +307,14 @@
     <b>Q</b> — Quick build wall &nbsp; <b>ESC</b> — Release mouse<br><br>
     🎯 Eliminate 24 bots to get the <b>Victory Royale!</b><br>
     ⚡ Storm closes in — stay inside the safe zone!
+  </div>
+  <div class="info mobile-only" style="display:none">
+    <b>Left joystick</b> — Move<br>
+    <b>Right side drag</b> — Aim<br>
+    <b>🔫</b> — Shoot &nbsp; <b>⬆</b> — Jump &nbsp; <b>🏃</b> — Sprint<br>
+    <b>🔄R</b> — Reload &nbsp; <b>🚧Q</b> — Toggle Build<br>
+    Tap weapon/build slots to switch<br><br>
+    🎯 Eliminate 24 bots for <b>Victory Royale!</b>
   </div>
   <button id="play-btn">DROP IN</button>
 </div>
@@ -944,6 +1016,54 @@ function showHitmarker() {
 const keys = {};
 let mouseLocked = false;
 let mouseDown = false;
+const isMobile = matchMedia('(pointer: coarse)').matches;
+
+// ─── Mobile Touch Controls ──────────────────────────────────
+let mJoyVec = { x: 0, y: 0 };
+let mJoyTouchId = null;
+let mLookTouchId = null;
+let mLookLX = 0, mLookLY = 0;
+let mJumping = false, mSprinting = false;
+
+if (isMobile) {
+  const jz = document.getElementById('m-joystick');
+  const jk = document.getElementById('m-joy-knob');
+  const lz = document.getElementById('m-look');
+  const JR = 50;
+
+  jz.addEventListener('touchstart', e => { e.preventDefault(); const t=e.changedTouches[0]; mJoyTouchId=t.identifier; updJoy(t); }, {passive:false});
+  jz.addEventListener('touchmove', e => { e.preventDefault(); for(const t of e.changedTouches) if(t.identifier===mJoyTouchId) updJoy(t); }, {passive:false});
+  const endJ = e => { for(const t of e.changedTouches) if(t.identifier===mJoyTouchId){mJoyTouchId=null;mJoyVec={x:0,y:0};jk.style.transform='translate(-50%,-50%)';} };
+  jz.addEventListener('touchend', endJ); jz.addEventListener('touchcancel', endJ);
+  function updJoy(t) {
+    const r=jz.getBoundingClientRect(), cx=r.left+r.width/2, cy=r.top+r.height/2;
+    let dx=t.clientX-cx, dy=t.clientY-cy, d=Math.sqrt(dx*dx+dy*dy);
+    if(d>JR){dx=dx/d*JR;dy=dy/d*JR;}
+    mJoyVec.x=dx/JR; mJoyVec.y=dy/JR;
+    jk.style.transform=`translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+  }
+
+  lz.addEventListener('touchstart', e => { e.preventDefault(); const t=e.changedTouches[0]; mLookTouchId=t.identifier; mLookLX=t.clientX; mLookLY=t.clientY; }, {passive:false});
+  lz.addEventListener('touchmove', e => { e.preventDefault(); for(const t of e.changedTouches) if(t.identifier===mLookTouchId){ player.yaw-=(t.clientX-mLookLX)*0.004; player.pitch-=(t.clientY-mLookLY)*0.004; player.pitch=Math.max(-1.4,Math.min(1.4,player.pitch)); mLookLX=t.clientX; mLookLY=t.clientY; }}, {passive:false});
+  const endL = e => { for(const t of e.changedTouches) if(t.identifier===mLookTouchId) mLookTouchId=null; };
+  lz.addEventListener('touchend', endL); lz.addEventListener('touchcancel', endL);
+
+  document.getElementById('m-shoot').addEventListener('touchstart', e => { e.preventDefault(); mouseDown=true; playerShoot(); }, {passive:false});
+  document.getElementById('m-shoot').addEventListener('touchend', e => { e.preventDefault(); mouseDown=false; });
+  document.getElementById('m-jump').addEventListener('touchstart', e => { e.preventDefault(); mJumping=true; }, {passive:false});
+  document.getElementById('m-jump').addEventListener('touchend', e => { e.preventDefault(); mJumping=false; });
+  document.getElementById('m-reload').addEventListener('touchstart', e => { e.preventDefault(); startReload(); }, {passive:false});
+  document.getElementById('m-build').addEventListener('touchstart', e => {
+    e.preventDefault();
+    player.buildSlot = player.buildSlot===0 ? -1 : 0;
+    if(player.buildSlot<0) player.weaponSlot=0;
+    updateActionBar(); updateBuildPreview();
+  }, {passive:false});
+  document.getElementById('m-sprint').addEventListener('touchstart', e => { e.preventDefault(); mSprinting=true; }, {passive:false});
+  document.getElementById('m-sprint').addEventListener('touchend', e => { e.preventDefault(); mSprinting=false; });
+
+  document.addEventListener('touchmove', e => { if(!e.target.closest('#overlay')&&!e.target.closest('#game-over')) e.preventDefault(); }, {passive:false});
+}
 
 document.addEventListener('keydown', e => {
   keys[e.code] = true;
@@ -996,16 +1116,21 @@ function updatePlayer(dt) {
   if (keys['KeyS']) { mx += Math.sin(player.yaw); mz += Math.cos(player.yaw); }
   if (keys['KeyA']) { mx -= Math.cos(player.yaw); mz += Math.sin(player.yaw); }
   if (keys['KeyD']) { mx += Math.cos(player.yaw); mz -= Math.sin(player.yaw); }
+  // Mobile joystick
+  if (isMobile && (mJoyVec.x!==0||mJoyVec.y!==0)) {
+    mx += -mJoyVec.y*Math.sin(player.yaw) + mJoyVec.x*Math.cos(player.yaw);
+    mz += -mJoyVec.y*Math.cos(player.yaw) - mJoyVec.x*Math.sin(player.yaw);
+  }
   const len = Math.sqrt(mx*mx + mz*mz);
   if (len > 0) { mx /= len; mz /= len; }
 
-  const spd = keys['ShiftLeft'] ? player.sprintSpeed : player.speed;
+  const spd = (keys['ShiftLeft']||mSprinting) ? player.sprintSpeed : player.speed;
   player.vx = mx * spd;
   player.vz = mz * spd;
 
   // Gravity & jump
   player.vy -= 22 * dt;
-  if (keys['Space'] && player.onGround) player.vy = player.jumpSpeed;
+  if ((keys['Space']||mJumping) && player.onGround) player.vy = player.jumpSpeed;
 
   // Move
   player.x += player.vx * dt;
@@ -1222,10 +1347,18 @@ window.addEventListener('resize', () => {
   camera.updateProjectionMatrix();
   renderer.setSize(innerWidth, innerHeight);
 });
+window.addEventListener('orientationchange', () => {
+  setTimeout(() => {
+    camera.aspect = innerWidth / innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(innerWidth, innerHeight);
+  }, 200);
+});
 
 document.getElementById('play-btn').onclick = () => {
   document.getElementById('overlay').classList.add('hidden');
-  renderer.domElement.requestPointerLock();
+  if (!isMobile) renderer.domElement.requestPointerLock();
+  else mouseLocked = true;
 
   createTerrain();
   populateWorld();

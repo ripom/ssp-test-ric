@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Pacman</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -17,6 +17,8 @@
     min-height: 100vh;
     overflow: hidden;
     user-select: none;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
   }
   #header {
     font-size: 18px;
@@ -31,6 +33,7 @@
   #game-canvas {
     display: block;
     image-rendering: pixelated;
+    touch-action: none;
   }
   #message {
     font-size: 16px;
@@ -118,7 +121,64 @@
   #dpad .right { top: 50px; left: 100px; }
   @media (pointer: coarse) {
     #dpad { display: block; }
+    #controls { display: none; }
+    #legend .leg-group:last-child { display: none; }
+    #mobile-actions { display: flex !important; }
   }
+  @media (max-width: 560px) {
+    #header { font-size: 13px; padding: 6px 0; }
+    #header span { margin: 0 6px; }
+    #overlay h1 { font-size: 32px; }
+    #overlay .subtitle { font-size: 16px; }
+    #overlay .info { font-size: 13px; }
+    #overlay .start-btn { font-size: 16px; padding: 10px 30px; }
+    #legend { gap: 12px; padding: 8px 10px; }
+    #legend .leg-item { font-size: 11px; }
+    #legend .leg-title { font-size: 10px; }
+    #speed-bar button { width: 26px; height: 26px; font-size: 12px; }
+    #speed-bar .speed-lbl { font-size: 11px; }
+    #message { font-size: 13px; }
+    #dpad { width: 130px; height: 130px; margin-top: 10px; }
+    #dpad button { width: 44px; height: 44px; font-size: 18px; }
+    #dpad .up { left: 43px; }
+    #dpad .down { top: 86px; left: 43px; }
+    #dpad .left { top: 43px; }
+    #dpad .right { top: 43px; left: 86px; }
+  }
+  @media (max-width: 400px) {
+    #header { font-size: 11px; }
+    #header span { margin: 0 4px; }
+    #legend { display: none; }
+    #speed-bar button { width: 22px; height: 22px; font-size: 10px; }
+  }
+  @media (max-height: 500px) {
+    #legend { display: none; }
+    #speed-bar { margin-top: 4px; }
+    #dpad { margin-top: 6px; width: 110px; height: 110px; }
+    #dpad button { width: 38px; height: 38px; font-size: 16px; }
+    #dpad .up { left: 36px; }
+    #dpad .down { top: 72px; left: 36px; }
+    #dpad .left { top: 36px; }
+    #dpad .right { top: 36px; left: 72px; }
+    #header { padding: 3px 0; }
+  }
+  #mobile-actions {
+    display: none;
+    gap: 10px;
+    margin-top: 8px;
+    justify-content: center;
+  }
+  #mobile-actions button {
+    padding: 6px 16px;
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.3);
+    border-radius: 6px;
+    color: #fff;
+    font-size: 13px;
+    font-family: 'Courier New', monospace;
+    cursor: pointer;
+  }
+  #mobile-actions button:active { background: rgba(255,255,0,0.3); }
   #speed-bar {
     display: flex;
     align-items: center;
@@ -254,6 +314,10 @@
   <button class="left" data-dir="left">◀</button>
   <button class="right" data-dir="right">▶</button>
 </div>
+<div id="mobile-actions">
+  <button id="mob-pause">⏸ Pause</button>
+  <button id="mob-quit">✖ Quit</button>
+</div>
 
 <div id="overlay">
   <h1>PACMAN</h1>
@@ -307,7 +371,7 @@ const ROWS = MAZE_TEMPLATE.length;
 const COLS = MAZE_TEMPLATE[0].length;
 
 // ─── Constants ────────────────────────────────────────────────
-const CELL = 20;       // px per cell
+const CELL = Math.max(12, Math.min(20, Math.floor((Math.min(window.innerWidth - 16, 560)) / COLS)));
 const UP = 0, DOWN = 1, LEFT = 2, RIGHT = 3, NONE = -1;
 const DIR_DELTA = { [UP]:[-1,0], [DOWN]:[1,0], [LEFT]:[0,-1], [RIGHT]:[0,1], [NONE]:[0,0] };
 const REVERSE = { [UP]:DOWN, [DOWN]:UP, [LEFT]:RIGHT, [RIGHT]:LEFT };
@@ -643,11 +707,46 @@ document.querySelectorAll("#dpad button").forEach(btn => {
   btn.addEventListener("mousedown",  e => { e.preventDefault(); handleDir(map[btn.dataset.dir]); });
 });
 
+// Mobile pause/quit buttons
+document.getElementById('mob-pause').addEventListener('click', () => { paused = !paused; });
+document.getElementById('mob-pause').addEventListener('touchend', e => { e.preventDefault(); paused = !paused; });
+document.getElementById('mob-quit').addEventListener('click', () => {
+  showOverlay("PACMAN", "◉ < · · · ♠ ♣ ♦ ♥", "START"); running = false;
+});
+document.getElementById('mob-quit').addEventListener('touchend', e => {
+  e.preventDefault();
+  showOverlay("PACMAN", "◉ < · · · ♠ ♣ ♦ ♥", "START"); running = false;
+});
+
+// Swipe on canvas for mobile
+let _touchX = 0, _touchY = 0;
+canvas.addEventListener('touchstart', e => {
+  e.preventDefault();
+  _touchX = e.touches[0].clientX;
+  _touchY = e.touches[0].clientY;
+}, { passive: false });
+canvas.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
+canvas.addEventListener('touchend', e => {
+  e.preventDefault();
+  const dx = e.changedTouches[0].clientX - _touchX;
+  const dy = e.changedTouches[0].clientY - _touchY;
+  if (Math.max(Math.abs(dx), Math.abs(dy)) < 15) return;
+  if (Math.abs(dx) > Math.abs(dy)) handleDir(dx > 0 ? RIGHT : LEFT);
+  else handleDir(dy > 0 ? DOWN : UP);
+}, { passive: false });
+
 document.querySelectorAll('#speed-bar button').forEach(btn => {
   btn.addEventListener('click', () => setSpeed(parseInt(btn.dataset.speed)));
 });
 
 startBtn.addEventListener("click", () => {
+  fullReset();
+  hideOverlay();
+  running = true;
+  requestAnimationFrame(gameLoop);
+});
+startBtn.addEventListener("touchend", e => {
+  e.preventDefault();
   fullReset();
   hideOverlay();
   running = true;

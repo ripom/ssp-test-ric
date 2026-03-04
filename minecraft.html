@@ -2,12 +2,12 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Minecraft</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { overflow: hidden; background: #000; font-family: 'Courier New', monospace; }
-  canvas { display: block; width: 100vw; height: 100vh; }
+  body { overflow: hidden; background: #000; font-family: 'Courier New', monospace; user-select:none; touch-action:none; -webkit-tap-highlight-color:transparent; }
+  canvas { display: block; width: 100vw; height: 100vh; touch-action:none; }
   #crosshair {
     position: fixed; top: 50%; left: 50%;
     transform: translate(-50%, -50%);
@@ -85,6 +85,52 @@
     text-shadow: 1px 1px 2px #000;
     z-index: 10; text-align: right; line-height: 1.6;
   }
+  /* ═══ Mobile Controls ═══ */
+  .mobile-only { display: none; }
+  @media (pointer: coarse) { .mobile-only { display: block; } .desktop-only { display: none; } }
+  #joystick-zone {
+    position: fixed; bottom: 20px; left: 20px; width: 130px; height: 130px;
+    z-index: 30; border-radius: 50%;
+    background: rgba(255,255,255,0.08); border: 2px solid rgba(255,255,255,0.15);
+  }
+  #joystick-knob {
+    position: absolute; width: 50px; height: 50px; border-radius: 50%;
+    background: rgba(255,255,255,0.3); border: 2px solid rgba(255,255,255,0.5);
+    top: 50%; left: 50%; transform: translate(-50%,-50%);
+    pointer-events: none;
+  }
+  #look-zone {
+    position: fixed; top: 0; right: 0; width: 50vw; height: 100vh;
+    z-index: 25; /* invisible touch area for camera look */
+  }
+  .mob-btn {
+    position: fixed; z-index: 30; width: 56px; height: 56px; border-radius: 50%;
+    background: rgba(255,255,255,0.12); border: 2px solid rgba(255,255,255,0.25);
+    color: #fff; font-size: 20px; display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+  }
+  .mob-btn:active { background: rgba(255,255,255,0.3); }
+  #mob-jump { bottom: 20px; right: 20px; }
+  #mob-break { bottom: 90px; right: 20px; font-size: 16px; }
+  #mob-place { bottom: 90px; right: 86px; font-size: 16px; }
+  #mob-cycle { bottom: 20px; right: 86px; font-size: 14px; }
+  @media (max-width: 600px) {
+    .hotbar-slot { width: 40px; height: 40px; }
+    .hotbar-slot .block-preview { width: 26px; height: 26px; }
+    .hotbar-slot .slot-num { font-size: 8px; }
+    #hud { font-size: 11px; }
+    #coords { font-size: 10px; }
+    #overlay h1 { font-size: 36px; }
+    #overlay .info { font-size: 12px; padding: 14px 18px; }
+    #overlay button { font-size: 16px; padding: 12px 36px; }
+    #joystick-zone { width: 110px; height: 110px; bottom: 14px; left: 14px; }
+    #joystick-knob { width: 42px; height: 42px; }
+    .mob-btn { width: 48px; height: 48px; font-size: 16px; }
+    #mob-break { bottom: 78px; right: 14px; }
+    #mob-place { bottom: 78px; right: 72px; }
+    #mob-jump { bottom: 14px; right: 14px; }
+    #mob-cycle { bottom: 14px; right: 72px; }
+  }
 </style>
 </head>
 <body>
@@ -96,15 +142,31 @@
 <div id="coords"></div>
 <div id="hotbar"></div>
 
+<!-- Mobile Controls -->
+<div id="joystick-zone" class="mobile-only">
+  <div id="joystick-knob"></div>
+</div>
+<div id="look-zone" class="mobile-only"></div>
+<div id="mob-jump" class="mob-btn mobile-only">⬆</div>
+<div id="mob-break" class="mob-btn mobile-only">⛏</div>
+<div id="mob-place" class="mob-btn mobile-only">➕</div>
+<div id="mob-cycle" class="mob-btn mobile-only">🔄</div>
+
 <div id="overlay">
   <h1>MINECRAFT</h1>
   <div class="sub">JavaScript Edition</div>
-  <div class="info">
+  <div class="info desktop-only">
     <b>WASD</b> — Move &nbsp;&nbsp; <b>Space</b> — Jump &nbsp;&nbsp; <b>Shift</b> — Descend<br>
     <b>Mouse</b> — Look around<br>
     <b>Left Click</b> — Break block &nbsp;&nbsp; <b>Right Click</b> — Place block<br>
     <b>1-9</b> — Select block &nbsp;&nbsp; <b>Scroll</b> — Cycle blocks<br>
     <b>F</b> — Toggle fog &nbsp;&nbsp; <b>ESC</b> — Release mouse
+  </div>
+  <div class="info mobile-only" style="display:none">
+    <b>Left joystick</b> — Move<br>
+    <b>Right side drag</b> — Look around<br>
+    <b>⛏</b> — Break block &nbsp;&nbsp; <b>➕</b> — Place block<br>
+    <b>⬆</b> — Jump &nbsp;&nbsp; <b>🔄</b> — Cycle blocks
   </div>
   <button id="play-btn">PLAY</button>
 </div>
@@ -532,6 +594,123 @@ function spawnPlayer() {
 const keys = {};
 let selectedSlot = 0;
 let mouseLocked = false;
+const isTouchDevice = matchMedia('(pointer: coarse)').matches;
+
+// ─── Mobile Touch Input ───────────────────────────────────────
+let joyVec = { x: 0, y: 0 }; // normalized -1..1
+let joyTouchId = null;
+let lookTouchId = null;
+let lookLastX = 0, lookLastY = 0;
+let mobJumping = false;
+
+if (isTouchDevice) {
+  const joyZone = document.getElementById('joystick-zone');
+  const joyKnob = document.getElementById('joystick-knob');
+  const lookZone = document.getElementById('look-zone');
+  const R = 55; // joystick radius
+
+  joyZone.addEventListener('touchstart', e => {
+    e.preventDefault();
+    const t = e.changedTouches[0];
+    joyTouchId = t.identifier;
+    updateJoy(t);
+  }, { passive: false });
+  joyZone.addEventListener('touchmove', e => {
+    e.preventDefault();
+    for (const t of e.changedTouches) {
+      if (t.identifier === joyTouchId) updateJoy(t);
+    }
+  }, { passive: false });
+  const endJoy = e => {
+    for (const t of e.changedTouches) {
+      if (t.identifier === joyTouchId) {
+        joyTouchId = null;
+        joyVec = { x: 0, y: 0 };
+        joyKnob.style.transform = 'translate(-50%,-50%)';
+      }
+    }
+  };
+  joyZone.addEventListener('touchend', endJoy);
+  joyZone.addEventListener('touchcancel', endJoy);
+
+  function updateJoy(t) {
+    const rect = joyZone.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    let dx = t.clientX - cx, dy = t.clientY - cy;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist > R) { dx = dx / dist * R; dy = dy / dist * R; }
+    joyVec.x = dx / R;
+    joyVec.y = dy / R;
+    joyKnob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+  }
+
+  // Look zone
+  lookZone.addEventListener('touchstart', e => {
+    e.preventDefault();
+    const t = e.changedTouches[0];
+    lookTouchId = t.identifier;
+    lookLastX = t.clientX; lookLastY = t.clientY;
+  }, { passive: false });
+  lookZone.addEventListener('touchmove', e => {
+    e.preventDefault();
+    for (const t of e.changedTouches) {
+      if (t.identifier === lookTouchId) {
+        const dx = t.clientX - lookLastX;
+        const dy = t.clientY - lookLastY;
+        player.yaw -= dx * 0.004;
+        player.pitch -= dy * 0.004;
+        player.pitch = Math.max(-Math.PI/2+0.01, Math.min(Math.PI/2-0.01, player.pitch));
+        lookLastX = t.clientX; lookLastY = t.clientY;
+      }
+    }
+  }, { passive: false });
+  const endLook = e => {
+    for (const t of e.changedTouches) {
+      if (t.identifier === lookTouchId) lookTouchId = null;
+    }
+  };
+  lookZone.addEventListener('touchend', endLook);
+  lookZone.addEventListener('touchcancel', endLook);
+
+  // Action buttons
+  document.getElementById('mob-jump').addEventListener('touchstart', e => {
+    e.preventDefault(); mobJumping = true;
+  }, { passive: false });
+  document.getElementById('mob-jump').addEventListener('touchend', e => {
+    e.preventDefault(); mobJumping = false;
+  });
+
+  document.getElementById('mob-break').addEventListener('touchstart', e => {
+    e.preventDefault();
+    const hit = raycast(8);
+    if (hit && getBlock(hit.x, hit.y, hit.z) !== BLOCK.WATER) {
+      setBlock(hit.x, hit.y, hit.z, BLOCK.AIR);
+    }
+  }, { passive: false });
+
+  document.getElementById('mob-place').addEventListener('touchstart', e => {
+    e.preventDefault();
+    const hit = raycast(8);
+    if (hit) {
+      const px = hit.x + hit.nx, py = hit.y + hit.ny, pz = hit.z + hit.nz;
+      const inPlayer = Math.floor(player.x)===px && Math.floor(player.z)===pz &&
+        (Math.floor(player.y)===py || Math.floor(player.y-player.height)===py);
+      if (!inPlayer) setBlock(px, py, pz, HOTBAR_BLOCKS[selectedSlot]);
+    }
+  }, { passive: false });
+
+  document.getElementById('mob-cycle').addEventListener('touchstart', e => {
+    e.preventDefault();
+    selectedSlot = (selectedSlot + 1) % HOTBAR_BLOCKS.length;
+    updateHotbar();
+  }, { passive: false });
+
+  // Prevent default touch on document
+  document.addEventListener('touchmove', e => {
+    if (!e.target.closest('#overlay')) e.preventDefault();
+  }, { passive: false });
+}
 
 document.addEventListener("keydown", e => {
   keys[e.code] = true;
@@ -638,10 +817,18 @@ function updatePlayer(dt) {
 
   // Movement direction
   let mx = 0, mz = 0;
+
+  // Keyboard movement
   if (keys["KeyW"]) { mx -= Math.sin(player.yaw); mz -= Math.cos(player.yaw); }
   if (keys["KeyS"]) { mx += Math.sin(player.yaw); mz += Math.cos(player.yaw); }
   if (keys["KeyA"]) { mx -= Math.cos(player.yaw); mz += Math.sin(player.yaw); }
   if (keys["KeyD"]) { mx += Math.cos(player.yaw); mz -= Math.sin(player.yaw); }
+
+  // Mobile joystick movement
+  if (isTouchDevice && (joyVec.x !== 0 || joyVec.y !== 0)) {
+    mx += -joyVec.y * Math.sin(player.yaw) + joyVec.x * Math.cos(player.yaw);
+    mz += -joyVec.y * Math.cos(player.yaw) - joyVec.x * Math.sin(player.yaw);
+  }
 
   const len = Math.sqrt(mx * mx + mz * mz);
   if (len > 0) { mx /= len; mz /= len; }
@@ -651,7 +838,7 @@ function updatePlayer(dt) {
 
   // Gravity
   player.vy -= 20 * dt;
-  if (keys["Space"] && player.onGround) player.vy = player.jumpSpeed;
+  if ((keys["Space"] || mobJumping) && player.onGround) player.vy = player.jumpSpeed;
   if (keys["ShiftLeft"]) player.vy -= 2 * dt;
 
   // Move with collision
@@ -881,10 +1068,10 @@ window.addEventListener("resize", () => {
 
 document.getElementById("play-btn").addEventListener("click", () => {
   document.getElementById("overlay").classList.add("hidden");
-  renderer.domElement.requestPointerLock();
+  if (!isTouchDevice) renderer.domElement.requestPointerLock();
+  else mouseLocked = true; // on mobile, skip pointer lock
   if (!running) {
     running = true;
-    // Build initial chunks
     for (let dx = -2; dx <= 2; dx++) {
       for (let dz = -2; dz <= 2; dz++) {
         generateChunk(dx, dz);
@@ -900,6 +1087,14 @@ document.getElementById("play-btn").addEventListener("click", () => {
     lastTime = performance.now();
     requestAnimationFrame(gameLoop);
   }
+});
+
+window.addEventListener('orientationchange', () => {
+  setTimeout(() => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  }, 200);
 });
 
 document.addEventListener("keydown", e => {
