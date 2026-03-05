@@ -63,6 +63,55 @@
         #overlay .final-score { font-size: 28px; color: #ffe44d; margin-bottom: 8px; }
         #overlay .info { font-size: 13px; color: #888; margin-bottom: 16px; text-align: center; line-height: 1.6; }
         #overlay p { font-size: 16px; color: #fff; opacity: 0.7; animation: pulse 1.5s infinite; }
+        /* How to Play button & panel */
+        #howToPlayBtn {
+            background: rgba(255,255,255,0.08);
+            border: 2px solid #ffe44d;
+            border-radius: 10px;
+            padding: 10px 28px;
+            color: #ffe44d;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-bottom: 14px;
+            transition: all 0.2s;
+            pointer-events: auto;
+            letter-spacing: 1px;
+        }
+        #howToPlayBtn:hover { background: rgba(255,228,77,0.18); transform: scale(1.06); }
+        #howToPlayPanel {
+            display: none;
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%,-50%);
+            background: rgba(10,10,20,0.97);
+            border: 2px solid #ffe44d;
+            border-radius: 14px;
+            padding: 28px 36px;
+            color: #fff;
+            z-index: 20;
+            max-width: 420px;
+            width: 90%;
+            text-align: center;
+            line-height: 1.7;
+            font-size: 14px;
+            pointer-events: auto;
+        }
+        #howToPlayPanel.show { display: block; }
+        #howToPlayPanel h3 { color: #ffe44d; font-size: 22px; margin-bottom: 12px; }
+        #howToPlayPanel .close-btn {
+            margin-top: 16px;
+            background: #ffe44d;
+            color: #111;
+            border: none;
+            border-radius: 8px;
+            padding: 8px 28px;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        #howToPlayPanel .close-btn:hover { background: #ffd700; transform: scale(1.05); }
 
         /* Weapon selection */
         #weaponSelect { display: none; margin-bottom: 20px; }
@@ -95,6 +144,29 @@
         @keyframes upgradeIn { from { transform: translate(-50%,-50%) scale(0.5); opacity:0; } to { transform: translate(-50%,-50%) scale(1); opacity:1; } }
         .weapon-level { color: #ffe44d; font-size: 12px; }
         @keyframes pulse { 0%,100%{opacity:0.3} 50%{opacity:1} }
+
+        /* ── XP Bar ── */
+        #xpBarContainer { position: absolute; top: 38px; left: 16px; width: 180px; height: 8px; background: #222; border-radius: 4px; border: 1px solid #444; z-index: 6; pointer-events: none; }
+        #xpFill { height: 100%; background: linear-gradient(90deg, #44aaff, #88ddff); border-radius: 4px; width: 0%; transition: width 0.4s; }
+        #playerLevelHud { position: absolute; top: 36px; left: 200px; color: #88ddff; font-size: 13px; font-weight: bold; text-shadow: 0 1px 4px rgba(0,0,0,0.8); z-index: 6; pointer-events: none; }
+        .achievement-popup { position: absolute; top: 70px; right: 16px; background: rgba(10,10,20,0.92); border: 2px solid #ffe44d; border-radius: 10px; padding: 10px 18px; color: #fff; z-index: 16; animation: achieveIn 0.5s ease-out; max-width: 260px; pointer-events: none; }
+        .achievement-popup .ach-title { color: #ffe44d; font-weight: bold; font-size: 14px; }
+        .achievement-popup .ach-desc { color: #bbb; font-size: 11px; margin-top: 2px; }
+        .achievement-popup .ach-reward { color: #88ff88; font-size: 11px; margin-top: 3px; }
+        @keyframes achieveIn { from { transform: translateX(60px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        #bossBar { position: absolute; top: 55px; left: 50%; transform: translateX(-50%); width: 300px; height: 14px; background: #222; border-radius: 7px; border: 2px solid #ff4400; z-index: 7; display: none; pointer-events: none; }
+        #bossFill { height: 100%; background: linear-gradient(90deg, #ff2200, #ff6600); border-radius: 5px; transition: width 0.3s; }
+        #bossName { position: absolute; top: 72px; left: 50%; transform: translateX(-50%); color: #ff6644; font-size: 11px; font-weight: bold; text-shadow: 0 1px 4px rgba(0,0,0,0.9); z-index: 7; display: none; pointer-events: none; }
+        .rarity-common { color: #ccc; } .rarity-rare { color: #4488ff; } .rarity-epic { color: #aa44ff; } .rarity-legendary { color: #ff8800; }
+        /* ── Weapon hotbar ── */
+        #weaponHotbar { position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; z-index: 8; pointer-events: auto; }
+        .hotbar-slot { width: 48px; height: 48px; background: rgba(10,10,20,0.75); border: 2px solid #444; border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: all 0.15s; position: relative; user-select: none; }
+        .hotbar-slot.active { border-color: #ffe44d; background: rgba(255,228,77,0.15); box-shadow: 0 0 10px rgba(255,228,77,0.3); }
+        .hotbar-slot.locked { opacity: 0.25; pointer-events: none; }
+        .hotbar-slot:hover:not(.locked) { border-color: #aaa; background: rgba(255,255,255,0.1); }
+        .hotbar-slot .slot-icon { font-size: 20px; line-height: 1; }
+        .hotbar-slot .slot-key { position: absolute; top: 2px; right: 4px; font-size: 9px; color: #888; font-weight: bold; }
+        .hotbar-slot .slot-name { font-size: 7px; color: #999; margin-top: 1px; }
     </style>
 </head>
 <body>
@@ -115,25 +187,12 @@
         </div>
         <div id="overlay">
             <h1>MONSTER SLAYER</h1>
-            <h2 id="subTitle">Choose your weapon</h2>
+            <div style="color:#888;font-size:12px;margin-bottom:4px;letter-spacing:2px;">v1.0.0</div>
+            <h2 id="subTitle">Survive the monster horde!</h2>
             <div class="final-score" id="finalScore"></div>
-            <div id="weaponSelect" class="show">
-                <div class="weapon-btn" id="btnSword">
-                    <span class="icon">⚔️</span>
-                    <span class="name">Sword</span>
-                    <span class="desc">Melee arc attack<br>High damage, close range</span>
-                </div>
-                <div class="weapon-btn" id="btnPistol">
-                    <span class="icon">🔫</span>
-                    <span class="name">Pistol</span>
-                    <span class="desc">Ranged projectile<br>Medium damage, long range</span>
-                </div>
-            </div>
-            <div class="info" id="infoText">
-                Desktop: WASD to move · Click to attack<br>
-                Mobile: Left joystick to move · Right side to aim & attack
-            </div>
-            <p id="startHint"></p>
+            <div class="info" id="infoText"></div>
+            <button id="howToPlayBtn" onclick="event.stopPropagation(); document.getElementById('howToPlayPanel').classList.add('show');">🎮 How to Play</button>
+            <p id="startHint">Click or tap to start</p>
         </div>
         <div id="secondaryOverlay" class="hidden" style="position:absolute;top:0;left:0;width:100%;height:100%;display:flex;flex-direction:column;justify-content:center;align-items:center;background:rgba(5,5,15,0.92);z-index:12;">
             <h2 style="color:#ffe44d;font-size:28px;margin-bottom:6px;">🎁 NEW WEAPON UNLOCKED!</h2>
@@ -151,7 +210,32 @@
                 </div>
             </div>
         </div>
+        <!-- XP & Level HUD -->
+        <div id="xpBarContainer"><div id="xpFill"></div></div>
+        <div id="playerLevelHud">Lv.1</div>
+        <!-- Boss health bar -->
+        <div id="bossBar"><div id="bossFill" style="width:100%"></div></div>
+        <div id="bossName"></div>
+        <!-- Weapon hotbar -->
+        <div id="weaponHotbar" style="display:none;">
+            <div class="hotbar-slot active" id="slot-sword" data-weapon="sword"><span class="slot-key">1</span><span class="slot-icon">⚔️</span><span class="slot-name">Sword</span></div>
+            <div class="hotbar-slot locked" id="slot-pistol" data-weapon="pistol"><span class="slot-key">2</span><span class="slot-icon">🔫</span><span class="slot-name">Pistol</span></div>
+        </div>
         <div class="credits">Created by Lorenzo Pomato using GitHub Copilot</div>
+        <div id="howToPlayPanel">
+            <h3>🎮 How to Play</h3>
+            <strong style="color:#ccc;">Goal:</strong> Survive endless waves of monsters, earn XP, level up, and unlock new weapons.<br><br>
+            <strong style="color:#ccc;">Controls:</strong><br>
+            Desktop: WASD to move · Click to attack<br>
+            Mobile: Left joystick to move · Right side to aim & attack<br><br>
+            <strong style="color:#ccc;">Tips:</strong><br>
+            • Defeat monsters to earn XP and level up<br>
+            • New weapons unlock as you level up<br>
+            • Press Q or use the hotbar (1/2) to switch weapons<br>
+            • Watch out for bosses at the end of waves<br>
+            • Keep moving to avoid getting surrounded!<br>
+            <button class="close-btn" onclick="event.stopPropagation(); document.getElementById('howToPlayPanel').classList.remove('show');">Got it!</button>
+        </div>
     </div>
 
 <script>
@@ -176,6 +260,378 @@ const weaponLevelHud = document.getElementById('weaponLevelHud');
 const secondaryOverlay = document.getElementById('secondaryOverlay');
 const btnRock = document.getElementById('btnRock');
 const btnBee = document.getElementById('btnBee');
+
+const xpFillEl = document.getElementById('xpFill');
+const playerLevelHudEl = document.getElementById('playerLevelHud');
+const bossBarEl = document.getElementById('bossBar');
+const bossFillEl = document.getElementById('bossFill');
+const bossNameEl = document.getElementById('bossName');
+const gameContainer = document.getElementById('gameContainer');
+const weaponHotbarEl = document.getElementById('weaponHotbar');
+
+// ═══ WEAPON HOTBAR ═══
+const hotbarSlots = {
+    sword: document.getElementById('slot-sword'),
+    pistol: document.getElementById('slot-pistol'),
+};
+function updateHotbar() {
+    Object.keys(hotbarSlots).forEach(k => {
+        if (!hotbarSlots[k]) return;
+        hotbarSlots[k].classList.toggle('locked', !unlockedWeapons.has(k));
+        hotbarSlots[k].classList.toggle('active', k === activeWeapon);
+    });
+}
+function switchWeapon(weapon) {
+    if (!unlockedWeapons.has(weapon)) return;
+    activeWeapon = weapon;
+    updateHotbar();
+    const def = WEAPON_DEFS[weapon];
+    weaponLabel.textContent = def ? def.icon + ' ' + def.name : '⚔️ Sword';
+}
+function ensureHotbarSlot(key) {
+    if (hotbarSlots[key]) return;
+    const def = WEAPON_DEFS[key]; if (!def) return;
+    const slotDiv = document.createElement('div');
+    slotDiv.className = 'hotbar-slot';
+    slotDiv.id = 'slot-' + key;
+    const slotNum = Object.keys(hotbarSlots).length + 1;
+    slotDiv.innerHTML = '<span class="slot-key">' + slotNum + '</span><span class="slot-icon">' + def.icon + '</span><span class="slot-name">' + def.name + '</span>';
+    weaponHotbarEl.appendChild(slotDiv);
+    hotbarSlots[key] = slotDiv;
+    slotDiv.addEventListener('click', e => { e.stopPropagation(); switchWeapon(key); });
+    slotDiv.addEventListener('touchend', e => { e.stopPropagation(); e.preventDefault(); switchWeapon(key); });
+}
+Object.keys(hotbarSlots).forEach(weapon => {
+    if (!hotbarSlots[weapon]) return;
+    hotbarSlots[weapon].addEventListener('click', e => { e.stopPropagation(); switchWeapon(weapon); });
+    hotbarSlots[weapon].addEventListener('touchend', e => { e.stopPropagation(); e.preventDefault(); switchWeapon(weapon); });
+});
+
+// ═══ PLAYER LEVEL & XP SYSTEM ═══
+const XP_BASE = 50;
+const XP_PER_LEVEL = 30;
+function xpForLevel(lvl) { return XP_BASE + (lvl - 1) * XP_PER_LEVEL; }
+let playerLevel = 1, playerXP = 0, playerXPToNext = xpForLevel(1);
+let totalMonstersKilled = 0, totalBossesKilled = 0, noDamageBossKill = false;
+let activeWeapon = 'sword';
+
+function grantXP(amount) {
+    playerXP += amount;
+    while (playerXP >= playerXPToNext) {
+        playerXP -= playerXPToNext;
+        playerLevel++;
+        playerXPToNext = xpForLevel(playerLevel);
+        onPlayerLevelUp(playerLevel);
+    }
+    updateXPBar();
+}
+function updateXPBar() {
+    xpFillEl.style.width = (playerXP / playerXPToNext * 100) + '%';
+    playerLevelHudEl.textContent = 'Lv.' + playerLevel;
+}
+function onPlayerLevelUp(newLevel) {
+    player.maxHp += 5;
+    player.hp = Math.min(player.maxHp, player.hp + 15);
+    player.speed += 0.05;
+    healthFill.style.width = (player.hp / player.maxHp * 100) + '%';
+    upgradeTitle.textContent = '⬆️ LEVEL UP!';
+    upgradeDesc.textContent = 'Level ' + newLevel + '! HP +5 | Speed +0.05';
+    upgradeBanner.classList.add('show');
+    setTimeout(() => upgradeBanner.classList.remove('show'), 2200);
+    for (let i = 0; i < 18; i++) {
+        const a = Math.random() * Math.PI * 2;
+        particles.push({ x: player.x+player.w/2, y: player.y+player.h/2, vx: Math.cos(a)*(3+Math.random()*3), vy: Math.sin(a)*(3+Math.random()*3), size: 3+Math.random()*3, life: 1, decay: 0.02, color: '#88ddff', gravity: 0, type: 'spark' });
+    }
+    checkWeaponUnlocks();
+    checkAchievements();
+}
+
+// ═══ WEAPON DEFINITIONS & RARITY ═══
+const WEAPON_DEFS = {
+    sword:       { icon: '⚔️', name: 'Sword',        rarity: 'common',    unlockLevel: 1 },
+    pistol:      { icon: '🔫', name: 'Pistol',       rarity: 'common',    unlockLevel: 3 },
+    rock:        { icon: '🪨', name: 'Rock',          rarity: 'rare',      unlockLevel: 6 },
+    bee:         { icon: '🐝', name: 'Bee Swarm',     rarity: 'rare',      unlockLevel: 9 },
+    lightning:   { icon: '⚡', name: 'Lightning Rod',  rarity: 'epic',      unlockLevel: 13 },
+    froststaff:  { icon: '❄️', name: 'Frost Staff',   rarity: 'epic',      unlockLevel: 18 },
+    inferno:     { icon: '🔥', name: 'Inferno Blade',  rarity: 'legendary', unlockLevel: 24 },
+    voidorb:     { icon: '🌀', name: 'Void Orb',      rarity: 'legendary', unlockLevel: 30 },
+};
+let unlockedWeapons = new Set(['sword']);
+
+function checkWeaponUnlocks() {
+    Object.entries(WEAPON_DEFS).forEach(([key, def]) => {
+        if (unlockedWeapons.has(key)) return;
+        if (playerLevel >= def.unlockLevel) unlockWeaponByKey(key);
+    });
+}
+function unlockWeaponByKey(key) {
+    if (unlockedWeapons.has(key)) return;
+    unlockedWeapons.add(key);
+    const def = WEAPON_DEFS[key];
+    if (key === 'rock' || key === 'bee') { if (!secondaryUnlocked) { secondaryWeapon = key; secondaryUnlocked = true; secondaryLevel = 1; } }
+    ensureHotbarSlot(key);
+    updateHotbar();
+    const rarityColors = { common: '#ccc', rare: '#4488ff', epic: '#aa44ff', legendary: '#ff8800' };
+    upgradeTitle.textContent = def.icon + ' ' + def.name + ' UNLOCKED!';
+    upgradeDesc.textContent = def.rarity.toUpperCase() + ' weapon acquired!';
+    upgradeBanner.classList.add('show');
+    setTimeout(() => upgradeBanner.classList.remove('show'), 3000);
+    for (let i = 0; i < 15; i++) {
+        const a = Math.random() * Math.PI * 2;
+        particles.push({ x: player.x+player.w/2, y: player.y+player.h/2, vx: Math.cos(a)*3, vy: Math.sin(a)*3, size: 3, life: 1, decay: 0.03, color: rarityColors[def.rarity]||'#fff', gravity: 0, type: 'spark' });
+    }
+}
+
+// ═══ MONSTER LEVEL SYSTEM ═══
+function calcMonsterLevel(waveNum) { return Math.max(1, Math.min(waveNum, playerLevel + 3)); }
+function applyMonsterLevel(m, monsterLevel) {
+    m.level = monsterLevel;
+    const lvlBonus = monsterLevel - 1;
+    m.hp = Math.round(m.hp * (1 + lvlBonus * 0.08));
+    m.maxHp = m.hp;
+    m.damage = Math.round(m.damage * (1 + lvlBonus * 0.05));
+    m.speed *= (1 + lvlBonus * 0.02);
+    m.score = Math.round(m.score * (1 + lvlBonus * 0.06));
+    m.xpReward = Math.round(5 + monsterLevel * 3 + (MONSTER_TYPES[m.type]?.isBoss ? monsterLevel * 10 : 0));
+    // Higher-level special abilities
+    if (monsterLevel >= 8 && m.type === 'demon') { m.canTeleport = true; m.teleportCooldown = 0; m.teleportCooldownMax = 180; }
+    if (monsterLevel >= 6 && m.type === 'ghost') { m.canPhase = true; m.phaseTimer = 0; m.phaseCooldown = 0; }
+    if (monsterLevel >= 5 && m.type === 'shadow') { m.canSplit = true; m.hasSplit = false; }
+}
+function onMonsterKilled(m) {
+    totalMonstersKilled++;
+    grantXP(m.xpReward || 5);
+    if (MONSTER_TYPES[m.type]?.isBoss || m.isSuperBoss) {
+        totalBossesKilled++;
+        if (noDamageBossKill) triggerAchievement('perfect_boss');
+    }
+    checkAchievements();
+}
+
+// ═══ ACHIEVEMENTS ═══
+const ACHIEVEMENTS = {
+    first_blood:  { title: '🗡️ First Blood',     desc: 'Defeat your first monster',            check: () => totalMonstersKilled >= 1, reward: 'xp', rewardAmount: 20 },
+    slayer_10:    { title: '💀 Slayer',           desc: 'Defeat 10 monsters',                   check: () => totalMonstersKilled >= 10, reward: 'xp', rewardAmount: 50 },
+    slayer_50:    { title: '☠️ Mass Extinction',  desc: 'Defeat 50 monsters',                   check: () => totalMonstersKilled >= 50, reward: 'xp', rewardAmount: 100 },
+    slayer_100:   { title: '🏆 Centurion',        desc: 'Defeat 100 monsters',                  check: () => totalMonstersKilled >= 100, reward: 'xp', rewardAmount: 200 },
+    reach_lvl5:   { title: '⬆️ Rising Star',      desc: 'Reach player level 5',                 check: () => playerLevel >= 5, reward: 'xp', rewardAmount: 30 },
+    reach_lvl10:  { title: '🌟 Veteran',          desc: 'Reach player level 10',                check: () => playerLevel >= 10, reward: 'xp', rewardAmount: 80 },
+    reach_lvl20:  { title: '👑 Master',           desc: 'Reach player level 20',                check: () => playerLevel >= 20, reward: 'xp', rewardAmount: 150 },
+    boss_slayer:  { title: '🐉 Boss Slayer',      desc: 'Defeat your first boss',               check: () => totalBossesKilled >= 1, reward: 'xp', rewardAmount: 60 },
+    boss_master:  { title: '🔱 Boss Master',      desc: 'Defeat 3 bosses',                      check: () => totalBossesKilled >= 3, reward: 'xp', rewardAmount: 120 },
+    perfect_boss: { title: '✨ Flawless Victory', desc: 'Defeat a boss without taking damage',  check: () => false, reward: 'xp', rewardAmount: 100 },
+    wave_10:      { title: '🌊 Wave Rider',       desc: 'Reach wave 10',                        check: () => wave >= 10, reward: 'xp', rewardAmount: 40 },
+    wave_20:      { title: '🌊 Tsunami',          desc: 'Reach wave 20',                        check: () => wave >= 20, reward: 'xp', rewardAmount: 100 },
+    combo_5:      { title: '🔥 Combo King',       desc: 'Get a 5x combo',                       check: () => comboCount >= 5, reward: 'xp', rewardAmount: 30 },
+    combo_10:     { title: '💥 Unstoppable',      desc: 'Get a 10x combo',                      check: () => comboCount >= 10, reward: 'xp', rewardAmount: 80 },
+    score_1000:   { title: '💰 Treasure Hunter',  desc: 'Score 1000 points',                    check: () => score >= 1000, reward: 'xp', rewardAmount: 30 },
+    score_5000:   { title: '💰 High Roller',      desc: 'Score 5000 points',                    check: () => score >= 5000, reward: 'xp', rewardAmount: 100 },
+};
+let completedAchievements = new Set();
+let achievementPopupQueue = [];
+let achievementPopupTimer = 0;
+
+function checkAchievements() {
+    Object.entries(ACHIEVEMENTS).forEach(([key, ach]) => {
+        if (completedAchievements.has(key)) return;
+        if (ach.check()) triggerAchievement(key);
+    });
+}
+function triggerAchievement(key) {
+    if (completedAchievements.has(key)) return;
+    completedAchievements.add(key);
+    const ach = ACHIEVEMENTS[key]; if (!ach) return;
+    let rewardText = '';
+    if (ach.reward === 'xp') { grantXP(ach.rewardAmount); rewardText = '+' + ach.rewardAmount + ' XP'; }
+    achievementPopupQueue.push({ title: ach.title, desc: ach.desc, reward: rewardText });
+}
+function showNextAchievementPopup() {
+    if (achievementPopupTimer > 0) { achievementPopupTimer--; return; }
+    if (achievementPopupQueue.length === 0) return;
+    const ach = achievementPopupQueue.shift();
+    const popup = document.createElement('div');
+    popup.className = 'achievement-popup';
+    popup.innerHTML = '<div class="ach-title">' + ach.title + '</div><div class="ach-desc">' + ach.desc + '</div><div class="ach-reward">' + ach.reward + '</div>';
+    gameContainer.appendChild(popup);
+    achievementPopupTimer = 180;
+    setTimeout(() => { popup.remove(); }, 3500);
+}
+
+// ═══ SUPER BOSS SYSTEM (every 10 waves) ═══
+const SUPER_BOSS_TYPES = {
+    infernal_dragon: { name: 'Infernal Dragon', w: 75, h: 75, speed: 0.7, hp: 1200, damage: 30, score: 400, color: '#ff4400', eyeColor: '#ffff00', pupilColor: '#880000', deathParts: 20, partColor: '#cc3300', partColor2: '#991100', isBoss: true, isSuperBoss: true, phases: 3, abilities: ['fireBreath', 'summonMinions', 'enrage'] },
+    lich_king:       { name: 'Lich King',       w: 65, h: 68, speed: 0.8, hp: 1000, damage: 25, score: 350, color: '#5522aa', eyeColor: '#00ffff', pupilColor: '#220044', deathParts: 18, partColor: '#4411aa', partColor2: '#330099', isBoss: true, isSuperBoss: true, phases: 3, abilities: ['teleport', 'spawnGhosts', 'enrage'] },
+    void_titan:      { name: 'Void Titan',      w: 80, h: 80, speed: 0.4, hp: 1600, damage: 40, score: 500, color: '#222244', eyeColor: '#ff00ff', pupilColor: '#110022', deathParts: 22, partColor: '#111133', partColor2: '#000022', isBoss: true, isSuperBoss: true, phases: 3, abilities: ['voidPull', 'shieldPulse', 'enrage'] },
+};
+
+function spawnSuperBoss(waveNum) {
+    const bossKeys = Object.keys(SUPER_BOSS_TYPES);
+    const idx = Math.floor((waveNum / 10 - 1)) % bossKeys.length;
+    const bt = SUPER_BOSS_TYPES[bossKeys[idx]];
+    let x = W / 2, y = -30;
+    const monsterLevel = calcMonsterLevel(waveNum);
+    const boss = {
+        x, y, w: bt.w, h: bt.h, vx: 0, vy: 0,
+        hp: bt.hp, maxHp: bt.hp, speed: bt.speed, damage: bt.damage, score: bt.score,
+        type: bossKeys[idx], color: bt.color, eyeColor: bt.eyeColor, pupilColor: bt.pupilColor,
+        deathParts: bt.deathParts, partColor: bt.partColor, partColor2: bt.partColor2,
+        hitFlash: 0, knockbackX: 0, knockbackY: 0, wobble: Math.random()*Math.PI*2, attackCooldown: 0,
+        isSuperBoss: true, bossName: bt.name, phase: 1, maxPhases: bt.phases,
+        abilities: bt.abilities, abilityTimer: 0, abilityCooldown: 120, enraged: false,
+        level: monsterLevel, xpReward: Math.round(50 + monsterLevel * 15),
+    };
+    const lvlBonus = monsterLevel - 1;
+    boss.hp = Math.round(boss.hp * (1 + lvlBonus * 0.1)); boss.maxHp = boss.hp;
+    boss.damage = Math.round(boss.damage * (1 + lvlBonus * 0.06));
+    monsters.push(boss);
+    bossAlive = true;
+    bossBarEl.style.display = 'block'; bossNameEl.style.display = 'block';
+    bossNameEl.textContent = bt.name + ' (Lv.' + monsterLevel + ')';
+    bossFillEl.style.width = '100%';
+}
+
+function updateSuperBossAI(m) {
+    if (!m.isSuperBoss) return;
+    const hpPct = m.hp / m.maxHp;
+    if (hpPct <= 0.33 && m.phase < 3) {
+        m.phase = 3; m.enraged = true; m.speed *= 1.4; m.damage = Math.round(m.damage * 1.3); screenShake = 12;
+        for (let i = 0; i < 25; i++) { const a = Math.random()*Math.PI*2; particles.push({x:m.x+m.w/2,y:m.y+m.h/2,vx:Math.cos(a)*5,vy:Math.sin(a)*5,size:4,life:1,decay:0.02,color:'#ff2200',gravity:0,type:'spark'}); }
+    } else if (hpPct <= 0.66 && m.phase < 2) { m.phase = 2; m.speed *= 1.15; }
+    bossFillEl.style.width = (hpPct * 100) + '%';
+    m.abilityTimer++;
+    const cooldown = m.enraged ? Math.round(m.abilityCooldown * 0.6) : m.abilityCooldown;
+    if (m.abilityTimer >= cooldown) { m.abilityTimer = 0; executeBossAbility(m); }
+}
+
+function executeBossAbility(m) {
+    const cx = m.x + m.w/2, cy = m.y + m.h/2;
+    const abilities = m.abilities || [];
+    let ability;
+    if (m.phase === 1) ability = abilities[0];
+    else if (m.phase === 2) ability = abilities[1];
+    else ability = abilities[Math.floor(Math.random() * abilities.length)];
+
+    if (ability === 'fireBreath') {
+        const angle = Math.atan2(player.y - cy, player.x - cx);
+        for (let i = -2; i <= 2; i++) {
+            const a = angle + i * 0.25;
+            bossProjectiles.push({ x: cx+Math.cos(a)*30, y: cy+Math.sin(a)*30, vx: Math.cos(a)*5, vy: Math.sin(a)*5, life: 60, bossDmg: Math.round(m.damage*0.5), color: '#ff4400' });
+        }
+        for (let i = 0; i < 10; i++) { const a = Math.atan2(player.y-cy,player.x-cx)+(Math.random()-0.5)*0.8; particles.push({x:cx,y:cy,vx:Math.cos(a)*6,vy:Math.sin(a)*6,size:6,life:0.6,decay:0.04,color:'#ff6600',gravity:0,type:'spark'}); }
+    } else if (ability === 'summonMinions') {
+        const count = m.enraged ? 4 : 2;
+        for (let i = 0; i < count; i++) {
+            const type = ['slime','shadow'][Math.floor(Math.random()*2)];
+            spawnMonster(type); const minion = monsters[monsters.length-1];
+            minion.x = cx+(Math.random()-0.5)*80; minion.y = cy+(Math.random()-0.5)*80;
+            minion.hp = Math.round(minion.hp*0.5); minion.maxHp = minion.hp;
+            applyMonsterLevel(minion, Math.max(1, m.level-2));
+        }
+    } else if (ability === 'teleport') {
+        const angle = Math.random()*Math.PI*2; const dist = 80+Math.random()*40;
+        m.x = player.x+Math.cos(angle)*dist-m.w/2; m.y = player.y+Math.sin(angle)*dist-m.h/2;
+        m.x = Math.max(0,Math.min(W-m.w,m.x)); m.y = Math.max(0,Math.min(H-m.h,m.y));
+        for (let i=0;i<12;i++){const a=Math.random()*Math.PI*2;particles.push({x:m.x+m.w/2,y:m.y+m.h/2,vx:Math.cos(a)*3,vy:Math.sin(a)*3,size:5,life:0.5,decay:0.05,color:'#aa44ff',gravity:0,type:'smoke'});}
+    } else if (ability === 'spawnGhosts') {
+        const count = m.enraged ? 4 : 2;
+        for (let i=0;i<count;i++){spawnMonster('ghost');const g=monsters[monsters.length-1];g.x=cx+(Math.random()-0.5)*100;g.y=cy+(Math.random()-0.5)*100;applyMonsterLevel(g,Math.max(1,m.level-1));}
+    } else if (ability === 'voidPull') {
+        const dx=cx-(player.x+player.w/2),dy=cy-(player.y+player.h/2);const d=Math.sqrt(dx*dx+dy*dy);
+        if(d>30){player.x+=(dx/d)*40;player.y+=(dy/d)*40;player.x=Math.max(0,Math.min(W-player.w,player.x));player.y=Math.max(0,Math.min(H-player.h,player.y));}
+        screenShake=6;
+        for(let i=0;i<15;i++){const a=Math.random()*Math.PI*2;const r=60+Math.random()*40;particles.push({x:cx+Math.cos(a)*r,y:cy+Math.sin(a)*r,vx:-Math.cos(a)*4,vy:-Math.sin(a)*4,size:4,life:0.6,decay:0.04,color:'#ff00ff',gravity:0,type:'spark'});}
+    } else if (ability === 'shieldPulse') {
+        const pushDist=60;const dx=(player.x+player.w/2)-cx,dy=(player.y+player.h/2)-cy;const d=Math.sqrt(dx*dx+dy*dy);
+        if(d<200&&d>0){player.x+=(dx/d)*pushDist;player.y+=(dy/d)*pushDist;player.x=Math.max(0,Math.min(W-player.w,player.x));player.y=Math.max(0,Math.min(H-player.h,player.y));}
+        for(let i=0;i<20;i++){const a=(Math.PI*2/20)*i;particles.push({x:cx+Math.cos(a)*40,y:cy+Math.sin(a)*40,vx:Math.cos(a)*2,vy:Math.sin(a)*2,size:5,life:0.5,decay:0.04,color:'#4444ff',gravity:0,type:'flash'});}
+    }
+}
+
+// New weapon attacks
+let bossProjectiles = [];
+let voidOrbs = [];
+
+function castLightning() {
+    if (!player || player.lightningCooldown > 0) return;
+    player.lightningCooldown = player.lightningCooldownMax;
+    const pcx = player.x+player.w/2, pcy = player.y+player.h/2;
+    const angle = player.facing;
+    let hitTargets = [], lastX = pcx, lastY = pcy;
+    const remaining = player.lightningChain; let hitSet = new Set();
+    for (let c = 0; c < remaining; c++) {
+        let closest = null, closestDist = player.lightningRange;
+        monsters.forEach(m => {
+            if (m.hp <= 0 || hitSet.has(m)) return;
+            const dx = (m.x+m.w/2)-lastX, dy = (m.y+m.h/2)-lastY;
+            const d = Math.sqrt(dx*dx+dy*dy);
+            if (c === 0) { let a2=Math.atan2(dy,dx),diff=a2-angle; while(diff>Math.PI)diff-=Math.PI*2; while(diff<-Math.PI)diff+=Math.PI*2; if(Math.abs(diff)>Math.PI*0.6) return; }
+            if (d < closestDist) { closestDist = d; closest = m; }
+        });
+        if (!closest) break;
+        hitSet.add(closest);
+        const mcx=closest.x+closest.w/2,mcy=closest.y+closest.h/2;
+        hitTargets.push({from:{x:lastX,y:lastY},to:{x:mcx,y:mcy},m:closest});
+        lastX = mcx; lastY = mcy;
+        const dmg = Math.round(player.lightningDmg * Math.pow(0.75, c));
+        closest.hp -= dmg; closest.hitFlash = 8;
+        spawnHitParticles(mcx, mcy, '#88ddff', 5);
+        particles.push({x:mcx,y:mcy-10,vx:0,vy:-2,size:16,life:1,decay:0.025,color:'#88ddff',gravity:0,type:'text',text:dmg.toString()});
+        if (closest.hp <= 0) { spawnDeathEffect(closest); comboCount++; comboTimer=120; score+=closest.score*(comboCount>1?comboCount:1); scoreText.textContent=score; spawnPickup(mcx,mcy); onMonsterKilled(closest); }
+    }
+    monsters = monsters.filter(m => m.hp > 0);
+    hitTargets.forEach(t => { const dx=t.to.x-t.from.x,dy=t.to.y-t.from.y; const d=Math.sqrt(dx*dx+dy*dy); const steps=Math.ceil(d/10); for(let i=0;i<=steps;i++){const p=i/steps;particles.push({x:t.from.x+dx*p+(Math.random()-0.5)*8,y:t.from.y+dy*p+(Math.random()-0.5)*8,vx:0,vy:0,size:3,life:0.4,decay:0.05,color:'#88ddff',gravity:0,type:'spark'});} });
+    particles.push({x:pcx+Math.cos(angle)*20,y:pcy+Math.sin(angle)*20,vx:0,vy:0,size:15,life:0.3,decay:0.06,color:'#aaeeff',gravity:0,type:'flash'});
+    screenShake = 3;
+}
+
+function castFrost() {
+    if (!player || player.frostCooldown > 0) return;
+    player.frostCooldown = player.frostCooldownMax;
+    const pcx=player.x+player.w/2,pcy=player.y+player.h/2; const angle=player.facing;
+    monsters.forEach(m => {
+        if (m.hp <= 0) return;
+        const mcx=m.x+m.w/2,mcy=m.y+m.h/2;const dx=mcx-pcx,dy=mcy-pcy;const dist=Math.sqrt(dx*dx+dy*dy);
+        if (dist > player.frostRange) return;
+        let a=Math.atan2(dy,dx),diff=a-angle; while(diff>Math.PI)diff-=Math.PI*2; while(diff<-Math.PI)diff+=Math.PI*2;
+        if (Math.abs(diff) > Math.PI*0.4) return;
+        const dmg = player.frostDmg; m.hp -= dmg; m.hitFlash = 6;
+        if (!m.originalSpeed) m.originalSpeed = m.speed;
+        m.speed = m.originalSpeed * 0.4; m.slowTimer = player.frostSlowDuration;
+        spawnHitParticles(mcx, mcy, '#88ccff', 4);
+        particles.push({x:mcx,y:mcy-10,vx:0,vy:-2,size:14,life:1,decay:0.025,color:'#88ccff',gravity:0,type:'text',text:dmg.toString()});
+        if (m.hp <= 0) { spawnDeathEffect(m); comboCount++; comboTimer=120; score+=m.score*(comboCount>1?comboCount:1); scoreText.textContent=score; spawnPickup(mcx,mcy); onMonsterKilled(m); }
+    });
+    monsters = monsters.filter(m => m.hp > 0);
+    for(let i=0;i<15;i++){const a=angle+(Math.random()-0.5)*0.8;const d=20+Math.random()*player.frostRange*0.8;particles.push({x:pcx+Math.cos(a)*d,y:pcy+Math.sin(a)*d,vx:Math.cos(a)*0.5,vy:Math.sin(a)*0.5,size:3+Math.random()*4,life:0.6,decay:0.04,color:'#aaddff',gravity:0,type:'spark'});}
+}
+
+function castInferno() {
+    if (!player || player.infernoCooldown > 0) return;
+    player.infernoCooldown = player.infernoCooldownMax;
+    player.swingAnim = 1;
+    const angle=player.facing;const halfArc=player.infernoArc/2;const range=player.infernoRange;
+    const pcx=player.x+player.w/2,pcy=player.y+player.h/2;
+    for(let a=-halfArc;a<halfArc;a+=0.2){const pa=angle+a;const dist=range*0.5+Math.random()*range*0.5;particles.push({x:pcx+Math.cos(pa)*dist,y:pcy+Math.sin(pa)*dist,vx:Math.cos(pa)*2,vy:Math.sin(pa)*2,size:3+Math.random()*4,life:0.6,decay:0.05,color:Math.random()>0.5?'#ff4400':'#ffaa00',gravity:-0.03,type:'spark'});}
+    monsters.forEach(m => {
+        if (m.hp<=0) return; const mcx=m.x+m.w/2,mcy=m.y+m.h/2;const dx=mcx-pcx,dy=mcy-pcy;const dist=Math.sqrt(dx*dx+dy*dy);
+        if (dist > range+m.w/2) return; let a2=Math.atan2(dy,dx),diff=a2-angle;while(diff>Math.PI)diff-=Math.PI*2;while(diff<-Math.PI)diff+=Math.PI*2;if(Math.abs(diff)>halfArc)return;
+        m.hp -= player.infernoDmg; m.hitFlash = 8; m.burnTicks = player.infernoBurnTicks; m.burnDmg = player.infernoBurnDmg; m.burnTimer = 0;
+        const ka=Math.atan2(dy,dx); m.knockbackX=Math.cos(ka)*10; m.knockbackY=Math.sin(ka)*10;
+        spawnHitParticles(mcx,mcy,'#ff6600',6);
+        particles.push({x:mcx,y:mcy-10,vx:0,vy:-2,size:18,life:1,decay:0.02,color:'#ff8800',gravity:0,type:'text',text:player.infernoDmg.toString()});
+        if(m.hp<=0){spawnDeathEffect(m);comboCount++;comboTimer=120;score+=m.score*(comboCount>1?comboCount:1);scoreText.textContent=score;spawnPickup(mcx,mcy);onMonsterKilled(m);}
+    });
+    monsters = monsters.filter(m => m.hp > 0); screenShake = 4;
+}
+
+function castVoidOrb() {
+    if (!player || player.voidCooldown > 0) return;
+    player.voidCooldown = player.voidCooldownMax;
+    const angle = player.facing; const pcx=player.x+player.w/2,pcy=player.y+player.h/2;
+    voidOrbs.push({ x: pcx+Math.cos(angle)*20, y: pcy+Math.sin(angle)*20, vx: Math.cos(angle)*4, vy: Math.sin(angle)*4, life: player.voidDuration, pullRange: player.voidPullRange, dmg: player.voidDmg, dmgTimer: 0 });
+}
+
 
 let W = canvas.width, H = canvas.height;
 const TILE = 40;
@@ -204,9 +660,10 @@ let keys = {};
 let mouseX = W/2, mouseY = H/2;
 let screenShake = 0;
 let comboCount = 0, comboTimer = 0;
-let chosenWeapon = 'sword';
+let chosenWeapon = 'sword'; // always sword at start
 let weaponLevel = 0;
 let bossAlive = false;
+let bossSpawning = false;
 let challengeActive = null; // null or { type, timer }
 let secondaryWeapon = null; // 'rock' or 'bee' or null
 let secondaryLevel = 0;
@@ -241,6 +698,11 @@ function initPlayer() {
         // Secondary weapon stats
         rockDmg: 35, rockSplash: 50, rockSpeed: 7, rockCooldown: 0, rockCooldownMax: 40, rockGravity: 0.15,
         beeDmg: 8, beeSpeed: 4, beeLife: 200, beeCooldown: 0, beeCooldownMax: 18, beeCount: 1,
+        // New progression weapons
+        lightningDmg: 30, lightningRange: 150, lightningChain: 3, lightningCooldown: 0, lightningCooldownMax: 35,
+        frostDmg: 22, frostRange: 120, frostSlowDuration: 90, frostCooldown: 0, frostCooldownMax: 28,
+        infernoDmg: 40, infernoRange: 65, infernoArc: Math.PI * 0.7, infernoBurnDmg: 5, infernoBurnTicks: 4, infernoCooldown: 0, infernoCooldownMax: 18,
+        voidDmg: 20, voidPullRange: 100, voidDuration: 60, voidCooldown: 0, voidCooldownMax: 50,
     };
 }
 
@@ -313,8 +775,8 @@ const MONSTER_TYPES = {
     ghost: { w: 32, h: 34, speed: 2.5, hp: 20, damage: 10, score: 15, color: '#8888cc', eyeColor: '#fff', pupilColor: '#224', deathParts: 10, partColor: '#7777bb', partColor2: '#5555aa' },
     ogre: { w: 44, h: 44, speed: 0.8, hp: 150, damage: 25, score: 50, color: '#886633', eyeColor: '#ff4', pupilColor: '#430', deathParts: 12, partColor: '#775522', partColor2: '#664411' },
     shadow: { w: 28, h: 30, speed: 3.2, hp: 15, damage: 12, score: 20, color: '#333344', eyeColor: '#f0f', pupilColor: '#303', deathParts: 8, partColor: '#222233', partColor2: '#111122' },
-    dragon: { w: 50, h: 50, speed: 1.5, hp: 300, damage: 30, score: 100, color: '#cc5500', eyeColor: '#ff0', pupilColor: '#600', deathParts: 16, partColor: '#aa4400', partColor2: '#882200', isBoss: true },
-    lich: { w: 40, h: 42, speed: 2.0, hp: 250, damage: 20, score: 80, color: '#6644aa', eyeColor: '#0ff', pupilColor: '#204', deathParts: 14, partColor: '#5533aa', partColor2: '#3322aa', isBoss: true },
+    dragon: { w: 60, h: 60, speed: 1.2, hp: 500, damage: 25, score: 150, color: '#cc5500', eyeColor: '#ff0', pupilColor: '#600', deathParts: 16, partColor: '#aa4400', partColor2: '#882200', isBoss: true },
+    lich: { w: 50, h: 52, speed: 1.5, hp: 400, damage: 20, score: 120, color: '#6644aa', eyeColor: '#0ff', pupilColor: '#204', deathParts: 14, partColor: '#5533aa', partColor2: '#3322aa', isBoss: true },
 };
 
 function spawnMonster(type) {
@@ -338,7 +800,7 @@ function spawnMonster(type) {
 }
 
 function getWaveDifficultyMultiplier() {
-    return 1 + (wave - 1) * 0.12; // monsters get 12% stronger per wave
+    return 1 + (wave - 1) * 0.05; // monsters get 5% stronger per wave (gentle curve for longer game)
 }
 
 function spawnWave() {
@@ -346,51 +808,65 @@ function spawnWave() {
     waveNum.textContent = wave;
 
     // Upgrade weapon every 2 waves (starting wave 2)
-    if (wave > 1 && wave % 2 === 0) {
+    if (wave > 1 && wave % 3 === 0) {
         upgradeWeapon();
         if (secondaryUnlocked) upgradeSecondary();
     }
 
-    // At wave 5, offer secondary weapon selection
-    if (wave === 5 && !secondaryUnlocked) {
-        gameState = 'secondarySelect';
-        secondaryOverlay.classList.remove('hidden');
-        secondaryOverlay.style.display = 'flex';
-        return; // pause spawning until weapon is chosen
-    }
+    // Check weapon unlocks and achievements each wave
+    checkWeaponUnlocks(); checkAchievements();
 
-    // Fixed enemy counts for early waves, then scaling
+    // Gentle enemy counts - game is longer, difficulty ramps slowly
     const regularTypes = ['slime', 'ghost', 'demon', 'shadow', 'ogre'];
     let count, available;
-    if (wave === 1) { count = 1; available = ['slime']; }
-    else if (wave === 2) { count = 5; available = ['slime']; }
-    else if (wave === 3) { count = 10; available = ['slime']; }
-    else if (wave === 4) { count = 12; available = ['slime', 'ghost']; }
-    else if (wave <= 6) { count = 10 + wave * 2; available = ['slime', 'ghost', 'demon']; }
-    else if (wave <= 8) { count = 10 + wave * 2; available = ['slime', 'ghost', 'demon', 'shadow']; }
-    else { count = 10 + wave * 2 + Math.floor(wave / 3); available = regularTypes; }
+    if (wave === 1) { count = 2; available = ['slime']; }
+    else if (wave === 2) { count = 3; available = ['slime']; }
+    else if (wave === 3) { count = 4; available = ['slime']; }
+    else if (wave === 4) { count = 5; available = ['slime']; }
+    else if (wave === 5) { count = 5; available = ['slime', 'ghost']; }
+    else if (wave === 6) { count = 6; available = ['slime', 'ghost']; }
+    else if (wave === 7) { count = 7; available = ['slime', 'ghost']; }
+    else if (wave === 8) { count = 7; available = ['slime', 'ghost', 'demon']; }
+    else if (wave === 9) { count = 8; available = ['slime', 'ghost', 'demon']; }
+    else if (wave <= 12) { count = 6 + wave; available = ['slime', 'ghost', 'demon']; }
+    else if (wave <= 16) { count = 6 + wave; available = ['slime', 'ghost', 'demon', 'shadow']; }
+    else if (wave <= 25) { count = 8 + wave; available = regularTypes; }
+    else { count = Math.min(35, 10 + wave + Math.floor(wave / 4)); available = regularTypes; }
 
-    // ─── BOSS WAVES: every 5 waves ───
-    const isBossWave = (wave % 5 === 0) && wave >= 5;
+    // ─── BOSS WAVES: boss only, no regular monsters ───
+    // Super boss every 10 waves, regular boss every 5
+    const isSuperBossWave = (wave % 10 === 0) && wave >= 10;
+    const isBossWave = !isSuperBossWave && (wave % 5 === 0) && wave >= 5;
+    noDamageBossKill = true;
+    if (isSuperBossWave) {
+        count = 0; // ONLY the super boss, no regular monsters
+        bossSpawning = true;
+        setTimeout(() => { if (gameState !== 'playing') { bossSpawning = false; return; } bossSpawning = false; spawnSuperBoss(wave); }, 600);
+    }
     if (isBossWave) {
+        count = 0; // ONLY the boss, no regular monsters
+        bossSpawning = true;
         const bossType = wave % 10 === 0 ? 'lich' : 'dragon';
         setTimeout(() => {
-            if (gameState !== 'playing') return;
+            if (gameState !== 'playing') { bossSpawning = false; return; }
+            bossSpawning = false;
             spawnMonster(bossType);
-            // Scale boss HP with wave
             const boss = monsters[monsters.length - 1];
             const mult = getWaveDifficultyMultiplier();
-            boss.hp = Math.round(boss.maxHp * mult * 1.5);
+            boss.hp = Math.round(boss.maxHp * mult * 2.0);
             boss.maxHp = boss.hp;
             boss.damage = Math.round(boss.damage * mult);
-            boss.score = Math.round(boss.score * mult);
+            boss.score = Math.round(boss.score * mult * 2);
+            applyMonsterLevel(boss, calcMonsterLevel(wave) + 2);
             bossAlive = true;
+            bossBarEl.style.display = 'block'; bossNameEl.style.display = 'block';
+            bossNameEl.textContent = (bossType === 'dragon' ? 'Dragon' : 'Lich') + ' (Lv.' + boss.level + ')';
+            bossFillEl.style.width = '100%';
         }, 600);
-        count = Math.floor(count * 0.6); // fewer regulars on boss wave
     }
 
-    // ─── CHALLENGE WAVES: every 3 waves (not boss wave) ───
-    const isChallengeWave = !isBossWave && wave >= 3 && wave % 3 === 0;
+    // ─── CHALLENGE WAVES: every 3 waves (not boss wave), starts later ───
+    const isChallengeWave = !isBossWave && !isSuperBossWave && wave >= 6 && wave % 3 === 0;
     if (isChallengeWave) {
         const challenges = ['swarm', 'speed', 'tank', 'darkness'];
         challengeActive = { type: challenges[Math.floor(Math.random() * challenges.length)], timer: 0 };
@@ -423,6 +899,8 @@ function spawnWave() {
             m.damage = Math.round(m.damage * (1 + (wave-1)*0.06));
             m.speed *= (1 + (wave-1)*0.04);
             m.score = Math.round(m.score * (1 + (wave-1)*0.05));
+            // Apply monster level
+            applyMonsterLevel(m, calcMonsterLevel(wave));
             // Challenge modifiers
             if (challengeActive) {
                 if (challengeActive.type === 'swarm') { m.hp = Math.round(m.hp * 0.5); m.speed *= 1.2; }
@@ -433,45 +911,8 @@ function spawnWave() {
     }
 }
 
-// Called after secondary weapon is chosen at wave 5
-function continueWaveSpawn() {
-    const regularTypes = ['slime', 'ghost', 'demon', 'shadow', 'ogre'];
-    let count, available;
-    if (wave <= 6) { count = 10 + wave * 2; available = ['slime', 'ghost', 'demon']; }
-    else if (wave <= 8) { count = 10 + wave * 2; available = ['slime', 'ghost', 'demon', 'shadow']; }
-    else { count = 10 + wave * 2 + Math.floor(wave / 3); available = regularTypes; }
-
-    const isBossWave = (wave % 5 === 0) && wave >= 5;
-    if (isBossWave) {
-        const bossType = wave % 10 === 0 ? 'lich' : 'dragon';
-        setTimeout(() => {
-            if (gameState !== 'playing') return;
-            spawnMonster(bossType);
-            const boss = monsters[monsters.length - 1];
-            const mult = getWaveDifficultyMultiplier();
-            boss.hp = Math.round(boss.maxHp * mult * 1.5);
-            boss.maxHp = boss.hp;
-            boss.damage = Math.round(boss.damage * mult);
-            boss.score = Math.round(boss.score * mult);
-            bossAlive = true;
-        }, 600);
-        count = Math.floor(count * 0.6);
-    }
-
-    const mult = getWaveDifficultyMultiplier();
-    for (let i = 0; i < count; i++) {
-        const type = available[Math.floor(Math.random() * available.length)];
-        setTimeout(() => {
-            if (gameState !== 'playing') return;
-            spawnMonster(type);
-            const m = monsters[monsters.length - 1];
-            m.hp = Math.round(m.hp * mult); m.maxHp = m.hp;
-            m.damage = Math.round(m.damage * (1 + (wave-1)*0.06));
-            m.speed *= (1 + (wave-1)*0.04);
-            m.score = Math.round(m.score * (1 + (wave-1)*0.05));
-        }, i * 400);
-    }
-}
+// No longer needed - secondary weapons auto-unlock via level system
+function continueWaveSpawn() { }
 
 // ─── Bullets (for pistol) ───
 function shootBullet() {
@@ -665,18 +1106,15 @@ canvas.addEventListener('touchend', e => {
     }
 });
 
-// ─── Weapon select buttons ───
-function selectWeapon(weapon) {
-    chosenWeapon = weapon;
-    weaponLabel.textContent = weapon === 'sword' ? '⚔️ Sword' : '🔫 Pistol';
-    weaponSelect.classList.remove('show');
-    weaponSelect.style.display = 'none';
-    startGame();
-}
-btnSword.addEventListener('click', e => { e.stopPropagation(); selectWeapon('sword'); });
-btnSword.addEventListener('touchend', e => { e.stopPropagation(); e.preventDefault(); selectWeapon('sword'); });
-btnPistol.addEventListener('click', e => { e.stopPropagation(); selectWeapon('pistol'); });
-btnPistol.addEventListener('touchend', e => { e.stopPropagation(); e.preventDefault(); selectWeapon('pistol'); });
+// ─── Start game directly (no weapon choice — always start with sword) ───
+overlay.addEventListener('click', e => {
+    if (document.getElementById('howToPlayPanel').classList.contains('show')) return;
+    if (gameState === 'menu' || gameState === 'dead') startGame();
+});
+overlay.addEventListener('touchend', e => {
+    if (document.getElementById('howToPlayPanel').classList.contains('show')) return;
+    if (gameState === 'menu' || gameState === 'dead') { e.preventDefault(); startGame(); }
+});
 
 // Secondary weapon selection
 function selectSecondary(weapon) {
@@ -695,46 +1133,58 @@ btnRock.addEventListener('touchend', e => { e.stopPropagation(); e.preventDefaul
 btnBee.addEventListener('click', e => { e.stopPropagation(); selectSecondary('bee'); });
 btnBee.addEventListener('touchend', e => { e.stopPropagation(); e.preventDefault(); selectSecondary('bee'); });
 
-// Overlay click for restart (not initial menu - that needs weapon select)
-overlay.addEventListener('click', e => {
-    if (gameState === 'dead') showWeaponSelect();
+// Keyboard start/restart
+document.addEventListener('keydown', e => {
+    if (document.getElementById('howToPlayPanel').classList.contains('show')) {
+        if (e.key === 'Escape') document.getElementById('howToPlayPanel').classList.remove('show');
+        return;
+    }
+    if (gameState === 'menu' || gameState === 'dead') { startGame(); return; }
+    // Weapon hotkeys
+    const hotkeys = ['Digit1','Digit2','Digit3','Digit4','Digit5','Digit6','Digit7','Digit8'];
+    const hotIndex = hotkeys.indexOf(e.code);
+    if (hotIndex >= 0 && gameState === 'playing') {
+        const weaponKeys = Object.keys(hotbarSlots);
+        if (hotIndex < weaponKeys.length) switchWeapon(weaponKeys[hotIndex]);
+    }
 });
-overlay.addEventListener('touchend', e => {
-    if (gameState === 'dead') { e.preventDefault(); showWeaponSelect(); }
-});
-
-function showWeaponSelect() {
-    gameState = 'menu';
-    subTitle.textContent = 'Choose your weapon';
-    subTitle.style.color = '#aaa';
-    finalScore.textContent = '';
-    weaponSelect.classList.add('show');
-    weaponSelect.style.display = 'flex';
-    startHint.textContent = '';
-}
 
 function startGame() {
+    chosenWeapon = 'sword'; // always start with sword
     initPlayer();
-    monsters = []; projectiles = []; particles = []; corpses = []; pickups = []; bullets = []; rocks = []; bees = [];
+    monsters = []; projectiles = []; particles = []; corpses = []; pickups = []; bullets = []; rocks = []; bees = []; bossProjectiles = []; voidOrbs = [];
     score = 0; wave = 0; comboCount = 0; comboTimer = 0;
-    weaponLevel = 0; bossAlive = false; challengeActive = null;
+    weaponLevel = 0; bossAlive = false; bossSpawning = false; challengeActive = null;
     secondaryWeapon = null; secondaryLevel = 0; secondaryUnlocked = false;
+    playerLevel = 1; playerXP = 0; playerXPToNext = xpForLevel(1);
+    totalMonstersKilled = 0; totalBossesKilled = 0; noDamageBossKill = false;
+    completedAchievements = new Set(); achievementPopupQueue = []; achievementPopupTimer = 0;
+    unlockedWeapons = new Set(['sword']); activeWeapon = 'sword';
+    weaponLabel.textContent = '⚔️ Sword';
+    updateXPBar();
+    updateHotbar();
+    bossBarEl.style.display = 'none'; bossNameEl.style.display = 'none';
     weaponLevelHud.textContent = '';
     scoreText.textContent = '0';
     overlay.classList.add('hidden');
+    weaponHotbarEl.style.display = 'flex';
     gameState = 'playing';
-    waveCooldown = 60;
+    waveCooldown = 90;
 }
 
 function attack() {
     if (gameState !== 'playing' || !player || player.hp <= 0) return;
-    // Also fire secondary weapon if unlocked
+    // Dispatch new progression weapons by active weapon
+    if (activeWeapon === 'lightning' && unlockedWeapons.has('lightning')) { castLightning(); return; }
+    if (activeWeapon === 'froststaff' && unlockedWeapons.has('froststaff')) { castFrost(); return; }
+    if (activeWeapon === 'inferno' && unlockedWeapons.has('inferno')) { castInferno(); return; }
+    if (activeWeapon === 'voidorb' && unlockedWeapons.has('voidorb')) { castVoidOrb(); return; }
+    if (activeWeapon === 'rock' && secondaryWeapon === 'rock') { throwRock(); return; }
+    if (activeWeapon === 'bee' && secondaryWeapon === 'bee') { launchBee(); return; }
+    if (activeWeapon === 'pistol' || player.weapon === 'pistol') { shootBullet(); return; }
+    // Also fire secondary weapon if unlocked (auto-fire alongside sword)
     if (secondaryWeapon === 'rock') throwRock();
     else if (secondaryWeapon === 'bee') launchBee();
-    if (player.weapon === 'pistol') {
-        shootBullet();
-        return;
-    }
     // Sword attack
     if (player.attackCooldown > 0) return;
     player.attackCooldown = 15;
@@ -782,6 +1232,7 @@ function attack() {
             score += m.score * (comboCount > 1 ? comboCount : 1);
             scoreText.textContent = score;
             spawnPickup(mcx, mcy);
+            onMonsterKilled(m);
         }
     });
     monsters = monsters.filter(m => m.hp > 0);
@@ -1051,6 +1502,10 @@ function drawMonster(m) {
         ctx.fillStyle = m.hp/m.maxHp > 0.3 ? '#4c4' : '#c44';
         ctx.fillRect(bx,by,bw*(m.hp/m.maxHp),bh);
     }
+    // Monster level badge
+    if (m.level && m.level > 1) { ctx.globalAlpha=0.7; ctx.fillStyle=m.isSuperBoss?'#ff8800':'#aaa'; ctx.font='bold 9px Arial'; ctx.textAlign='center'; ctx.fillText('Lv.'+m.level,cx,m.y-12); }
+    // Enrage glow for super bosses
+    if (m.isSuperBoss && m.enraged) { ctx.globalAlpha=0.3+Math.sin(Date.now()*0.01)*0.15; ctx.strokeStyle='#ff2200'; ctx.lineWidth=3; ctx.beginPath(); ctx.arc(cx,cy,Math.max(m.w,m.h)*0.7,0,Math.PI*2); ctx.stroke(); }
     ctx.restore();
 }
 
@@ -1176,15 +1631,17 @@ function drawWaveAnnounce() {
         ctx.save();
         ctx.globalAlpha = Math.min(1,(waveCooldown-30)/30);
         const nextWave = wave + 1;
-        const isBoss = nextWave >= 5 && nextWave % 5 === 0;
+        const isSuperBoss = nextWave >= 10 && nextWave % 10 === 0;
+        const isBoss = !isSuperBoss && nextWave >= 5 && nextWave % 5 === 0;
         const isChallenge = !isBoss && nextWave >= 3 && nextWave % 3 === 0;
-        ctx.fillStyle = isBoss ? '#ff2200' : (isChallenge ? '#ffaa00' : '#ff6644');
+        ctx.fillStyle = isSuperBoss ? '#ff8800' : (isBoss ? '#ff2200' : (isChallenge ? '#ffaa00' : '#ff6644'));
         ctx.shadowColor = ctx.fillStyle; ctx.shadowBlur = 20;
         ctx.font = `bold ${isBoss ? 44 : 36}px Arial`; ctx.textAlign = 'center';
-        ctx.fillText(isBoss ? `⚠ BOSS WAVE ${nextWave} ⚠` : `WAVE ${nextWave}`, W/2, H/2-20);
+        ctx.fillText(isSuperBoss ? `💀 SUPER BOSS ${nextWave} 💀` : (isBoss ? `⚠ BOSS WAVE ${nextWave} ⚠` : `WAVE ${nextWave}`), W/2, H/2-20);
         ctx.font = '18px Arial'; ctx.fillStyle = '#aaa'; ctx.shadowBlur = 0;
         let subtitle = 'Get ready...';
-        if (isBoss) subtitle = 'A powerful enemy approaches!';
+        if (isSuperBoss) subtitle = 'A legendary monster awakens!';
+        else if (isBoss) subtitle = 'A powerful enemy approaches!';
         else if (isChallenge) subtitle = '⚡ Special Challenge!';
         ctx.fillText(subtitle, W/2, H/2+15);
         ctx.restore();
@@ -1292,6 +1749,10 @@ function update() {
     if (player.shootCooldown > 0) player.shootCooldown--;
     if (player.rockCooldown > 0) player.rockCooldown--;
     if (player.beeCooldown > 0) player.beeCooldown--;
+    if (player.lightningCooldown > 0) player.lightningCooldown--;
+    if (player.frostCooldown > 0) player.frostCooldown--;
+    if (player.infernoCooldown > 0) player.infernoCooldown--;
+    if (player.voidCooldown > 0) player.voidCooldown--;
     if (player.swingAnim > 0) player.swingAnim -= 0.1;
     if (player.invincible > 0) player.invincible--;
     if (comboTimer > 0) comboTimer--; else comboCount = 0;
@@ -1319,6 +1780,7 @@ function update() {
                     score += m.score * (comboCount > 1 ? comboCount : 1);
                     scoreText.textContent = score;
                     spawnPickup(mcx, mcy);
+                    onMonsterKilled(m);
                 }
             }
         });
@@ -1356,7 +1818,7 @@ function update() {
                     m.knockbackY = Math.sin(ka+Math.PI) * 6 * falloff;
                     spawnHitParticles(m.x+m.w/2, m.y+m.h/2, '#886644', 3);
                     particles.push({ x: m.x+m.w/2, y: m.y+m.h/2-10, vx: 0, vy: -2, size: dmg>=20?16:12, life: 1, decay: 0.025, color: '#fff', gravity: 0, type: 'text', text: dmg.toString() });
-                    if (m.hp <= 0) { spawnDeathEffect(m); comboCount++; comboTimer=120; score+=m.score*(comboCount>1?comboCount:1); scoreText.textContent=score; spawnPickup(m.x+m.w/2,m.y+m.h/2); }
+                    if (m.hp <= 0) { spawnDeathEffect(m); comboCount++; comboTimer=120; score+=m.score*(comboCount>1?comboCount:1); scoreText.textContent=score; spawnPickup(m.x+m.w/2,m.y+m.h/2); onMonsterKilled(m); }
                 }
             });
             // Impact effect
@@ -1401,7 +1863,7 @@ function update() {
                 b.life = 0;
                 spawnHitParticles(b.x,b.y,'#ffcc00',3);
                 particles.push({x:m.x+m.w/2,y:m.y+m.h/2-10,vx:0,vy:-1.5,size:12,life:0.8,decay:0.03,color:'#ffcc00',gravity:0,type:'text',text:b.dmg.toString()});
-                if (m.hp<=0) { spawnDeathEffect(m); comboCount++; comboTimer=120; score+=m.score*(comboCount>1?comboCount:1); scoreText.textContent=score; spawnPickup(m.x+m.w/2,m.y+m.h/2); }
+                if (m.hp<=0) { spawnDeathEffect(m); comboCount++; comboTimer=120; score+=m.score*(comboCount>1?comboCount:1); scoreText.textContent=score; spawnPickup(m.x+m.w/2,m.y+m.h/2); onMonsterKilled(m); }
             }
         });
         // Bee trail
@@ -1410,12 +1872,65 @@ function update() {
     bees = bees.filter(b => b.life > 0 && b.x > -20 && b.x < W+20 && b.y > -20 && b.y < H+20);
     monsters = monsters.filter(m => m.hp > 0);
 
+    // Void Orbs update
+    voidOrbs.forEach(v => {
+        v.x += v.vx; v.y += v.vy; v.vx *= 0.96; v.vy *= 0.96; v.life--; v.dmgTimer++;
+        monsters.forEach(m => {
+            if (m.hp <= 0) return;
+            const dx = v.x-(m.x+m.w/2), dy = v.y-(m.y+m.h/2); const dist = Math.sqrt(dx*dx+dy*dy);
+            if (dist < v.pullRange && dist > 5) { m.x += (dx/dist)*2; m.y += (dy/dist)*2; }
+            if (dist < v.pullRange*0.6 && v.dmgTimer%15===0) {
+                m.hp -= v.dmg; m.hitFlash = 4; spawnHitParticles(m.x+m.w/2,m.y+m.h/2,'#ff00ff',2);
+                particles.push({x:m.x+m.w/2,y:m.y+m.h/2-10,vx:0,vy:-1.5,size:12,life:0.6,decay:0.04,color:'#ff00ff',gravity:0,type:'text',text:v.dmg.toString()});
+                if(m.hp<=0){spawnDeathEffect(m);comboCount++;comboTimer=120;score+=m.score*(comboCount>1?comboCount:1);scoreText.textContent=score;spawnPickup(m.x+m.w/2,m.y+m.h/2);onMonsterKilled(m);}
+            }
+        });
+        if(Math.random()>0.3){const a=Math.random()*Math.PI*2;particles.push({x:v.x+Math.cos(a)*20,y:v.y+Math.sin(a)*20,vx:-Math.cos(a)*2,vy:-Math.sin(a)*2,size:3,life:0.3,decay:0.04,color:'#cc00cc',gravity:0,type:'spark'});}
+    });
+    voidOrbs = voidOrbs.filter(v => v.life > 0);
+    monsters = monsters.filter(m => m.hp > 0);
+
+    // Boss Projectiles update
+    bossProjectiles.forEach(b => {
+        b.x += b.vx; b.y += b.vy; b.life--;
+        if (player && player.invincible <= 0) {
+            const dx = b.x-(player.x+player.w/2), dy = b.y-(player.y+player.h/2);
+            if (Math.sqrt(dx*dx+dy*dy) < player.w/2+6) {
+                player.hp -= b.bossDmg; player.invincible = 30; noDamageBossKill = false; b.life = 0;
+                healthFill.style.width = Math.max(0,player.hp/player.maxHp*100)+'%'; screenShake = 4;
+                spawnHitParticles(player.x+player.w/2,player.y+player.h/2,b.color||'#ff4466',5);
+                if (player.hp <= 0) { gameOver(); return; }
+            }
+        }
+    });
+    bossProjectiles = bossProjectiles.filter(b => b.life > 0 && b.x > -20 && b.x < W+20 && b.y > -20 && b.y < H+20);
+
     // Monsters
     monsters.forEach(m => {
         const dx = (player.x+player.w/2) - (m.x+m.w/2);
         const dy = (player.y+player.h/2) - (m.y+m.h/2);
         const dist = Math.sqrt(dx*dx+dy*dy);
         if (dist > 0) { m.vx = (dx/dist)*m.speed; m.vy = (dy/dist)*m.speed; }
+
+        // Monster special abilities
+        if (m.canTeleport) {
+            if (m.teleportCooldown > 0) m.teleportCooldown--;
+            else if (dist > 150 && Math.random() < 0.01) {
+                const a=Math.random()*Math.PI*2; m.x=player.x+Math.cos(a)*80-m.w/2; m.y=player.y+Math.sin(a)*80-m.h/2;
+                m.x=Math.max(0,Math.min(W-m.w,m.x)); m.y=Math.max(0,Math.min(H-m.h,m.y)); m.teleportCooldown=m.teleportCooldownMax;
+                for(let i=0;i<6;i++){const pa=Math.random()*Math.PI*2;particles.push({x:m.x+m.w/2,y:m.y+m.h/2,vx:Math.cos(pa)*2,vy:Math.sin(pa)*2,size:4,life:0.4,decay:0.05,color:'#cc3344',gravity:0,type:'smoke'});}
+            }
+        }
+        if(m.canSplit && !m.hasSplit && m.hp < m.maxHp*0.5) {
+            m.hasSplit=true;
+            for(let i=0;i<2;i++){spawnMonster('shadow');const s=monsters[monsters.length-1];s.x=m.x+(Math.random()-0.5)*30;s.y=m.y+(Math.random()-0.5)*30;s.hp=Math.round(m.maxHp*0.3);s.maxHp=s.hp;s.speed=m.speed*1.2;s.level=m.level;s.xpReward=Math.round((m.xpReward||5)*0.3);}
+        }
+        if (m.isSuperBoss) updateSuperBossAI(m);
+        // Burn DoT
+        if (m.burnTicks > 0) { m.burnTimer=(m.burnTimer||0)+1; if(m.burnTimer>=30){m.burnTimer=0;m.burnTicks--;m.hp-=m.burnDmg;m.hitFlash=3;if(m.hp<=0){spawnDeathEffect(m);comboCount++;comboTimer=120;score+=m.score*(comboCount>1?comboCount:1);scoreText.textContent=score;spawnPickup(m.x+m.w/2,m.y+m.h/2);onMonsterKilled(m);}}}
+        // Slow recovery
+        if(m.slowTimer>0){m.slowTimer--;if(m.slowTimer<=0&&m.originalSpeed){m.speed=m.originalSpeed;m.originalSpeed=null;}}
+
         m.x += m.vx + m.knockbackX;
         m.y += m.vy + m.knockbackY;
         m.knockbackX *= 0.8; m.knockbackY *= 0.8;
@@ -1429,6 +1944,7 @@ function update() {
             player.hp -= m.damage;
             player.invincible = 30;
             m.attackCooldown = 40;
+            noDamageBossKill = false;
             healthFill.style.width = Math.max(0,player.hp/player.maxHp*100)+'%';
             screenShake = 4;
             spawnHitParticles(player.x+player.w/2, player.y+player.h/2, '#ff4466', 5);
@@ -1465,14 +1981,16 @@ function update() {
     corpses = corpses.filter(c => c.alpha > 0);
 
     // Check if boss died
-    if (bossAlive && !monsters.some(m => MONSTER_TYPES[m.type]?.isBoss)) {
-        bossAlive = false;
-        score += 200;
-        scoreText.textContent = score;
+    if (bossAlive && !monsters.some(m => MONSTER_TYPES[m.type]?.isBoss || m.isSuperBoss)) {
+        bossAlive = false; score += 200; scoreText.textContent = score;
+        bossBarEl.style.display = 'none'; bossNameEl.style.display = 'none';
     }
+    // Achievement & popup updates
+    showNextAchievementPopup();
+    checkAchievements();
 
     if (waveCooldown > 0) { waveCooldown--; if (waveCooldown === 0) spawnWave(); }
-    else if (monsters.length === 0) { waveCooldown = 90; }
+    else if (monsters.length === 0 && !bossAlive && !bossSpawning) { waveCooldown = 90; }
 
     if (screenShake > 0) screenShake *= 0.85;
 }
@@ -1481,11 +1999,11 @@ function gameOver() {
     gameState = 'dead';
     subTitle.textContent = 'You have fallen...';
     subTitle.style.color = '#ff4455';
-    finalScore.textContent = `Score: ${score} | Wave: ${wave}`;
-    startHint.textContent = 'Tap to play again';
-    weaponSelect.style.display = 'none';
-    weaponSelect.classList.remove('show');
+    finalScore.textContent = `Score: ${score} · Wave: ${wave} · Level: ${playerLevel} · Kills: ${totalMonstersKilled}`;
+    startHint.textContent = 'Click or tap to play again';
     overlay.classList.remove('hidden');
+    weaponHotbarEl.style.display = 'none';
+    bossBarEl.style.display = 'none'; bossNameEl.style.display = 'none';
 }
 
 // ─── Main Loop ───
@@ -1507,6 +2025,10 @@ function gameLoop() {
     drawBullets();
     drawRocks();
     drawBees();
+    // Draw boss projectiles
+    bossProjectiles.forEach(b => { ctx.save(); ctx.fillStyle=b.color||'#ff4400'; ctx.shadowColor=b.color||'#ff4400'; ctx.shadowBlur=8; ctx.beginPath(); ctx.arc(b.x,b.y,6,0,Math.PI*2); ctx.fill(); ctx.shadowBlur=0; ctx.restore(); });
+    // Draw void orbs
+    voidOrbs.forEach(v => { ctx.save(); const pulse=Math.sin(Date.now()*0.01)*3; ctx.fillStyle='#220033'; ctx.shadowColor='#ff00ff'; ctx.shadowBlur=15; ctx.beginPath(); ctx.arc(v.x,v.y,12+pulse,0,Math.PI*2); ctx.fill(); ctx.fillStyle='#ff00ff22'; ctx.beginPath(); ctx.arc(v.x,v.y,v.pullRange*0.6,0,Math.PI*2); ctx.fill(); ctx.shadowBlur=0; ctx.restore(); });
     drawParticles();
     drawCombo();
     drawDarknessOverlay();
@@ -1522,7 +2044,7 @@ function gameLoop() {
 // ─── Init ───
 gameState = 'menu';
 initPlayer();
-monsters = []; projectiles = []; particles = []; corpses = []; pickups = []; bullets = [];
+monsters = []; projectiles = []; particles = []; corpses = []; pickups = []; bullets = []; bossProjectiles = []; voidOrbs = [];
 finalScore.textContent = '';
 gameLoop();
 </script>
