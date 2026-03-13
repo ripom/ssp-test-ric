@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Tresette a Perdere — Carte Napoletane</title>
+<title>Tresette — Carte Napoletane</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 html{touch-action:manipulation}
@@ -21,14 +21,16 @@ body{overflow:hidden;font-family:'Segoe UI',Arial,sans-serif;user-select:none;ba
   transform-origin:center center;
 }
 .card.face-up{
-  background:linear-gradient(135deg,#fdf6e3 0%,#f5ecd0 40%,#efe3c0 100%);
-  border:2px solid #a08050;
-  box-shadow:inset 0 0 8px rgba(160,128,80,0.15),1px 2px 6px rgba(0,0,0,0.4);
+  background:transparent;
+  border:none;
+  box-shadow:1px 2px 6px rgba(0,0,0,0.4);
+  overflow:hidden;
 }
-.card.face-up::before{
-  content:'';position:absolute;inset:3px;border-radius:3px;
-  border:1px solid rgba(160,128,80,0.3);
-  pointer-events:none;z-index:1;
+.card.face-up .card-img{
+  position:absolute;inset:0;width:100%;height:100%;
+  object-fit:fill;
+  border-radius:inherit;
+  pointer-events:none;
 }
 .card.face-down{
   background:#1a3a8a;
@@ -49,32 +51,8 @@ body{overflow:hidden;font-family:'Segoe UI',Arial,sans-serif;user-select:none;ba
 .card.playable{cursor:pointer;box-shadow:0 0 10px rgba(255,255,120,0.6),1px 2px 8px rgba(0,0,0,0.4)}
 .card.playable:hover{transform:translateY(-14px) scale(1.06);box-shadow:0 0 18px rgba(255,255,120,0.8),2px 4px 12px rgba(0,0,0,0.4);z-index:100!important}
 
-/* Card inner */
+/* Card inner (unused with image cards, kept for fallback) */
 .card-inner{position:relative;width:100%;height:100%;pointer-events:none}
-.card-corner{position:absolute;display:flex;flex-direction:column;align-items:center;line-height:1}
-.card-corner.top{top:3px;left:4px}
-.card-corner.bottom{bottom:3px;right:4px;transform:rotate(180deg)}
-.card-corner .c-rank{font-size:14px;font-weight:800}
-.card-corner .c-suit-sm{font-size:11px;margin-top:-2px}
-
-.card-center{position:absolute;inset:0;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;padding:18px 8px}
-.card-center .pip{font-size:16px;position:absolute}
-.card-center .face-label{font-size:22px;font-weight:900;opacity:0.7;text-align:center}
-.card-center .face-sub{font-size:8px;text-align:center;opacity:0.5;margin-top:2px}
-
-/* Suit colors */
-.suit-coppe{color:#cc7700}
-.suit-denari{color:#ccaa00}
-.suit-bastoni{color:#1a7a1a}
-.suit-spade{color:#2255aa}
-
-/* Face card decorative border */
-.card.face-card .card-inner::before{
-  content:'';position:absolute;inset:18px 6px;
-  border:1.5px solid currentColor;border-radius:3px;opacity:0.12;
-  background:currentColor;opacity:0.03;
-}
-.card-center .figure-svg{display:block;margin:0 auto;filter:drop-shadow(0 1px 1px rgba(0,0,0,0.15))}
 
 /* ════════ Player Areas ════════ */
 #player-hand{position:fixed;bottom:10px;left:50%;transform:translateX(-50%);height:120px;display:flex;align-items:flex-end;z-index:10}
@@ -188,13 +166,13 @@ body{overflow:hidden;font-family:'Segoe UI',Arial,sans-serif;user-select:none;ba
 .preview-row{display:flex;gap:8px;margin-bottom:24px;flex-wrap:wrap;justify-content:center}
 .preview-card{
   width:50px;height:76px;border-radius:5px;
-  background:linear-gradient(135deg,#fdf6e3,#f5ecd0,#efe3c0);
-  border:2px solid #a08050;display:flex;flex-direction:column;
-  align-items:center;justify-content:center;
-  box-shadow:inset 0 0 6px rgba(160,128,80,0.1);
+  overflow:hidden;
+  box-shadow:1px 2px 6px rgba(0,0,0,0.4);
 }
-.preview-card .pc-rank{font-size:16px;font-weight:900}
-.preview-card .pc-suit{font-size:14px;margin-top:-2px}
+.preview-card img{
+  width:100%;height:100%;object-fit:fill;
+  border-radius:inherit;
+}
 
 .info-box{
   text-align:left;line-height:2;font-size:13px;color:#bbb;
@@ -211,6 +189,20 @@ body{overflow:hidden;font-family:'Segoe UI',Arial,sans-serif;user-select:none;ba
   box-shadow:0 4px 20px rgba(50,150,50,0.35);
 }
 #play-btn:hover{filter:brightness(1.15);transform:scale(1.03)}
+
+/* ════════ Mode Selector ════════ */
+.mode-selector{display:flex;gap:12px;margin-bottom:20px}
+.mode-btn{
+  padding:12px 28px;font-size:15px;font-weight:bold;letter-spacing:1px;
+  border:2px solid rgba(255,255,255,0.2);border-radius:8px;
+  cursor:pointer;color:#ccc;background:rgba(255,255,255,0.06);
+  transition:all .2s;
+}
+.mode-btn:hover{background:rgba(255,255,255,0.12);color:#fff}
+.mode-btn.selected{
+  border-color:#fa4;color:#fa4;background:rgba(255,170,68,0.12);
+  box-shadow:0 0 12px rgba(255,170,68,0.2);
+}
 
 /* ════════ Game Over ════════ */
 #game-over{
@@ -257,11 +249,7 @@ body{overflow:hidden;font-family:'Segoe UI',Arial,sans-serif;user-select:none;ba
 /* ─── Tablet (<768px) ────────────────────────────── */
 @media (max-width: 768px) {
   .card{width:58px;height:90px;border-radius:5px}
-  .card-corner .c-rank{font-size:12px}
-  .card-corner .c-suit-sm{font-size:9px}
-  .card-center .face-label{font-size:18px}
-  .card-center .face-sub{font-size:7px}
-  .card-center .pip{font-size:13px}
+
 
   #trick-area{width:170px;height:170px}
   .trick-card .card{width:54px!important;height:84px!important}
@@ -281,8 +269,6 @@ body{overflow:hidden;font-family:'Segoe UI',Arial,sans-serif;user-select:none;ba
   #overlay h1{font-size:32px}
   .info-box{font-size:12px;padding:12px 16px;max-width:90vw}
   .preview-card{width:40px;height:60px}
-  .preview-card .pc-rank{font-size:14px}
-  .preview-card .pc-suit{font-size:12px}
 
   .go-content{padding:20px 24px}
   .go-content h2{font-size:28px}
@@ -292,14 +278,7 @@ body{overflow:hidden;font-family:'Segoe UI',Arial,sans-serif;user-select:none;ba
 /* ─── Mobile (<520px) ─────────────────────────────── */
 @media (max-width: 520px) {
   .card{width:48px;height:74px;border-radius:4px}
-  .card-corner .c-rank{font-size:11px}
-  .card-corner .c-suit-sm{font-size:8px}
-  .card-corner.top{top:2px;left:3px}
-  .card-corner.bottom{bottom:2px;right:3px}
-  .card-center{padding:14px 5px}
-  .card-center .face-label{font-size:16px}
-  .card-center .face-sub{font-size:6px}
-  .card-center .pip{font-size:10px}
+
 
   .card.playable:hover{transform:translateY(-10px) scale(1.04)}
   /* Touch-friendly: active state for playable cards */
@@ -340,8 +319,6 @@ body{overflow:hidden;font-family:'Segoe UI',Arial,sans-serif;user-select:none;ba
   #overlay .sub2{font-size:10px;margin-bottom:16px}
   .preview-row{gap:5px;margin-bottom:16px}
   .preview-card{width:36px;height:54px;border-radius:4px}
-  .preview-card .pc-rank{font-size:12px}
-  .preview-card .pc-suit{font-size:10px}
   .info-box{font-size:11px;padding:10px 14px;line-height:1.8;max-width:95vw}
   #play-btn{font-size:16px;padding:12px 50px}
 
@@ -363,10 +340,7 @@ body{overflow:hidden;font-family:'Segoe UI',Arial,sans-serif;user-select:none;ba
 /* ─── Very small phones (<380px) ──────────────────── */
 @media (max-width: 380px) {
   .card{width:42px;height:64px;border-radius:3px}
-  .card-corner .c-rank{font-size:10px}
-  .card-corner .c-suit-sm{font-size:7px}
-  .card-center .face-label{font-size:14px}
-  .card-center .pip{font-size:8px}
+
 
   #trick-area{width:120px;height:120px}
 
@@ -408,9 +382,9 @@ body{overflow:hidden;font-family:'Segoe UI',Arial,sans-serif;user-select:none;ba
   <div id="trick-area"></div>
 
   <div class="player-label south" id="label-south">Tu <span class="lb-pts"></span></div>
-  <div class="player-label north" id="label-north">Nord <span class="lb-pts"></span></div>
-  <div class="player-label west"  id="label-west">Ovest <span class="lb-pts"></span></div>
-  <div class="player-label east"  id="label-east">Est <span class="lb-pts"></span></div>
+  <div class="player-label north" id="label-north">Raffaele <span class="lb-pts"></span></div>
+  <div class="player-label west"  id="label-west">Domenico <span class="lb-pts"></span></div>
+  <div class="player-label east"  id="label-east">Vincenzo <span class="lb-pts"></span></div>
 </div>
 
 <div id="trick-count">Mano 0 / 10</div>
@@ -424,11 +398,17 @@ body{overflow:hidden;font-family:'Segoe UI',Arial,sans-serif;user-select:none;ba
 
 <button id="rules-btn">📜 Regole</button>
 
+<div id="volume-ctrl">
+  <span class="vol-icon" id="vol-toggle">🔊</span>
+  <input type="range" id="vol-slider" min="0" max="100" value="60">
+  <span class="vol-pct" id="vol-pct">60%</span>
+</div>
+
 <div id="rules-panel">
   <div class="rp-content">
-    <h2>📜 Tresette a Perdere</h2>
+    <h2 id="rules-title">📜 Tresette</h2>
     <p>Si gioca con il mazzo di <b>40 carte napoletane</b> (4 semi: Coppe, Denari, Bastoni, Spade).</p>
-    <p><b>Obiettivo:</b> Prendere il <b>minor numero di punti</b> possibile. Chi fa più punti <b>perde!</b></p>
+    <p id="rules-objective"><b>Obiettivo:</b> Dipende dalla modalità scelta.</p>
     <p><b>Giocatori:</b> 4 giocatori, ognuno per sé. 10 carte a testa.</p>
     <p><b>Svolgimento:</b> Si gioca in senso antiorario. Il primo giocatore posa una carta, gli altri devono <b>rispondere al seme</b> se possono. Chi non può, gioca un seme diverso (non prende).</p>
     <p><b>Gerarchia carte</b> (dalla più forte): <b>3, 2, Asso, Re, Cavallo, Fante, 7, 6, 5, 4</b></p>
@@ -439,7 +419,7 @@ body{overflow:hidden;font-family:'Segoe UI',Arial,sans-serif;user-select:none;ba
       • <b>4, 5, 6, 7</b> = 0 punti<br>
       • <b>Ultima presa</b> = ⅓ punto bonus
     </p>
-    <p>Totale nel mazzo: <b>11 punti</b>. Chi ne prende di più, perde!</p>
+    <p>Totale nel mazzo: <b>11 punti</b>.</p>
     <button class="rp-close" onclick="document.getElementById('rules-panel').classList.remove('show')">Chiudi</button>
   </div>
 </div>
@@ -447,13 +427,18 @@ body{overflow:hidden;font-family:'Segoe UI',Arial,sans-serif;user-select:none;ba
 <!-- ═══════ Start Screen ═══════ -->
 <div id="overlay">
   <h1>TRESETTE</h1>
-  <div class="sub">A PERDERE</div>
+  <div class="sub" id="overlay-sub">A PERDERE</div>
   <div class="sub2">con le carte napoletane</div>
+
+  <div class="mode-selector">
+    <button class="mode-btn selected" id="mode-perdere" onclick="selectMode('perdere')">🔻 A Perdere</button>
+    <button class="mode-btn" id="mode-vincere" onclick="selectMode('vincere')">🔺 A Vincere</button>
+  </div>
 
   <div class="preview-row" id="preview-row"></div>
 
   <div class="info-box" id="info-box">
-    <b>Obiettivo:</b> Prendi MENO punti possibili!<br>
+    <span id="info-objective"><b>Obiettivo:</b> Prendi MENO punti possibili!</span><br>
     <span id="info-suits"></span><br>
     <b>Gerarchia:</b> 3 › 2 › A › Re › Cav › Fan › 7 › 6 › 5 › 4<br>
     <b>Come giocare:</b> Clicca su una carta per giocarla.<br>
@@ -474,8 +459,197 @@ body{overflow:hidden;font-family:'Segoe UI',Arial,sans-serif;user-select:none;ba
 
 <script>
 // ═══════════════════════════════════════════════════════════════
-//  TRESETTE A PERDERE — Carte Napoletane
+//  SOUND ENGINE — AudioContext + pre-generated AudioBuffers
 // ═══════════════════════════════════════════════════════════════
+const AUDIO_SR = 22050;
+let audioCtx = null;
+let masterGain = null;
+let audioBuffers = {};
+let volumeLevel = 0.6;
+let muted = false;
+
+function genSamples(freq, dur, type, vol) {
+  const n = Math.floor(AUDIO_SR * dur);
+  const out = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    const t = i / AUDIO_SR;
+    const env = vol * Math.max(0, 1 - t / dur);
+    const phase = (freq * t) % 1;
+    let w;
+    if (type === 'sine') w = Math.sin(2 * Math.PI * freq * t);
+    else if (type === 'square') w = phase < 0.5 ? 1 : -1;
+    else if (type === 'sawtooth') w = 2 * phase - 1;
+    else if (type === 'triangle') w = 4 * Math.abs(phase - 0.5) - 1;
+    else w = Math.sin(2 * Math.PI * freq * t);
+    out[i] = w * env;
+  }
+  return out;
+}
+
+function mixTones(tones) {
+  const totalDur = Math.max(...tones.map(t => (t.delay||0) + t.dur)) + 0.02;
+  const n = Math.floor(AUDIO_SR * totalDur);
+  const out = new Float32Array(n);
+  for (const t of tones) {
+    if (t.freq <= 0) continue;
+    const s = genSamples(t.freq, t.dur, t.type, t.vol);
+    const off = Math.floor((t.delay||0) * AUDIO_SR);
+    for (let i = 0; i < s.length && off+i < n; i++) out[off+i] += s[i];
+  }
+  for (let i = 0; i < n; i++) out[i] = Math.max(-1, Math.min(1, out[i]));
+  return out;
+}
+
+// Pre-generate raw samples for all sounds
+const RAW_SOUNDS = {
+  // Card slapped on table — modeled after real recordings:
+  // A card landing is mostly a ~40ms broadband noise burst
+  // with slight low-mid emphasis (table resonance) and fast decay.
+  // We use multiple noise layers with different spectral shaping.
+  cardPlay: (() => {
+    const dur = 0.07;
+    const n = Math.floor(AUDIO_SR * dur);
+    const out = new Float32Array(n);
+    // Deterministic noise
+    let s1 = 37, s2 = 91;
+    const rng = () => { s1 = (s1 * 16807) % 2147483647; return (s1 / 2147483647) * 2 - 1; };
+    const rng2 = () => { s2 = (s2 * 48271) % 2147483647; return (s2 / 2147483647) * 2 - 1; };
+    // Simple one-pole low-pass filter state
+    let lp = 0;
+    for (let i = 0; i < n; i++) {
+      const t = i / AUDIO_SR;
+      // Sharp attack, fast exponential decay (real card snap is ~30-50ms)
+      const env = Math.min(1, i / (AUDIO_SR * 0.001)) * Math.exp(-t * 70);
+      // Raw broadband noise
+      const noise = rng() * 0.8;
+      // Low-pass filtered noise for body (table thump)
+      lp += 0.15 * (rng2() - lp);  // cutoff ~1.5kHz at 22050
+      const body = lp * 1.5;
+      out[i] = (noise * 0.55 + body * 0.45) * env;
+    }
+    return out;
+  })(),
+  // Card slide: softer swoosh
+  cardSlide: (() => {
+    const n = Math.floor(AUDIO_SR * 0.06);
+    const out = new Float32Array(n);
+    let s = 55;
+    for (let i = 0; i < n; i++) {
+      const t = i / AUDIO_SR;
+      s = (s * 16807) % 2147483647;
+      out[i] = ((s / 2147483647) * 2 - 1) * Math.exp(-t * 70) * 0.2;
+    }
+    return out;
+  })(),
+  // Trick won: pleasant two-note chime
+  trickWon: mixTones([
+    {freq:523, dur:0.15, type:'sine', vol:0.5},
+    {freq:659, dur:0.2, type:'sine', vol:0.45, delay:0.12}
+  ]),
+  // Win fanfare
+  win: mixTones([
+    {freq:392, dur:0.15, type:'sine', vol:0.5},
+    {freq:494, dur:0.15, type:'sine', vol:0.5, delay:0.15},
+    {freq:587, dur:0.15, type:'sine', vol:0.5, delay:0.3},
+    {freq:784, dur:0.3, type:'sine', vol:0.55, delay:0.45}
+  ]),
+  // Lose sound: descending
+  lose: mixTones([
+    {freq:392, dur:0.2, type:'sine', vol:0.45},
+    {freq:330, dur:0.2, type:'sine', vol:0.4, delay:0.2},
+    {freq:262, dur:0.35, type:'sine', vol:0.4, delay:0.4}
+  ]),
+  // Start game jingle
+  start: mixTones([
+    {freq:330, dur:0.12, type:'sine', vol:0.45},
+    {freq:392, dur:0.12, type:'sine', vol:0.45, delay:0.12},
+    {freq:494, dur:0.18, type:'sine', vol:0.5, delay:0.24}
+  ]),
+};
+
+
+
+function samplesToBuffer(samples) {
+  const buf = audioCtx.createBuffer(1, samples.length, AUDIO_SR);
+  buf.getChannelData(0).set(samples);
+  return buf;
+}
+
+function initAudio() {
+  if (audioCtx) {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    return;
+  }
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    audioCtx = new AC();
+    masterGain = audioCtx.createGain();
+    masterGain.gain.value = volumeLevel;
+    masterGain.connect(audioCtx.destination);
+    for (const [name, raw] of Object.entries(RAW_SOUNDS)) {
+      audioBuffers[name] = samplesToBuffer(raw);
+    }
+    audioCtx.resume();
+  } catch(e) {}
+}
+
+function playBuffer(name) {
+  if (!audioCtx || !audioBuffers[name] || muted) return;
+  try {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const src = audioCtx.createBufferSource();
+    src.buffer = audioBuffers[name];
+    src.connect(masterGain);
+    src.start(0);
+  } catch(e) {}
+}
+
+
+
+function setVolume(v) {
+  volumeLevel = Math.max(0, Math.min(1, v));
+  if (masterGain) masterGain.gain.value = volumeLevel;
+  document.getElementById('vol-pct').textContent = Math.round(volumeLevel * 100) + '%';
+  document.getElementById('vol-toggle').textContent = volumeLevel === 0 ? '🔇' : '🔊';
+  muted = volumeLevel === 0;
+}
+
+document.getElementById('vol-slider').addEventListener('input', function() {
+  setVolume(this.value / 100);
+});
+document.getElementById('vol-toggle').addEventListener('click', function() {
+  if (muted) {
+    document.getElementById('vol-slider').value = 60;
+    setVolume(0.6);
+  } else {
+    document.getElementById('vol-slider').value = 0;
+    setVolume(0);
+  }
+});
+
+function sndCardPlay()  { playBuffer('cardPlay'); }
+function sndCardSlide() { playBuffer('cardSlide'); }
+function sndTrickWon()  { playBuffer('trickWon'); }
+function sndWin()       { playBuffer('win'); }
+function sndLose()      { playBuffer('lose'); }
+function sndStart()     { playBuffer('start'); }
+
+// ═══════════════════════════════════════════════════════════════
+//  TRESETTE — Carte Napoletane (A Perdere / A Vincere)
+// ═══════════════════════════════════════════════════════════════
+
+// ─── Game Mode ────────────────────────────────────────────────
+let gameMode = 'perdere'; // 'perdere' or 'vincere'
+
+function selectMode(mode) {
+  gameMode = mode;
+  document.getElementById('mode-perdere').classList.toggle('selected', mode === 'perdere');
+  document.getElementById('mode-vincere').classList.toggle('selected', mode === 'vincere');
+  document.getElementById('overlay-sub').textContent = mode === 'perdere' ? 'A PERDERE' : 'A VINCERE';
+  document.getElementById('info-objective').innerHTML = mode === 'perdere'
+    ? '<b>Obiettivo:</b> Prendi MENO punti possibili!'
+    : '<b>Obiettivo:</b> Prendi PIÙ punti possibili!';
+}
 
 // ─── Constants ────────────────────────────────────────────────
 const SUITS = ['coppe','denari','bastoni','spade'];
@@ -494,7 +668,7 @@ const RANK_POWER = {4:0, 5:1, 6:2, 7:3, 8:4, 9:5, 10:6, 1:7, 2:8, 3:9};
 // Point values in "terzi" (thirds). 3 terzi = 1 punto.
 const RANK_POINTS = {1:3, 2:1, 3:1, 4:0, 5:0, 6:0, 7:0, 8:1, 9:1, 10:1};
 
-const PLAYER_NAMES = ['Tu','Est','Nord','Ovest'];
+const PLAYER_NAMES = ['Tu','Vincenzo','Raffaele','Domenico'];
 const PLAYER_POS = ['south','east','north','west'];
 // Play order: counter-clockwise = S(0) → E(1)→ N(2) → W(3)
 
@@ -683,70 +857,13 @@ function createCardElement(card, faceUp) {
 
   if (!faceUp) return el;
 
-  const isFace = card.rank >= 8;
-  if (isFace) el.classList.add('face-card');
-  el.classList.add('suit-' + card.suit);
-
-  const inner = document.createElement('div');
-  inner.className = 'card-inner';
-
-  const color = SUIT_COLORS[card.suit];
-  const rk = RANK_SHORT[card.rank];
-
-  // Corners
-  const topCorner = document.createElement('div');
-  topCorner.className = 'card-corner top';
-  topCorner.innerHTML = `<span class="c-rank" style="color:${color}">${rk}</span><span class="c-suit-sm">${suitSVG(card.suit, 10)}</span>`;
-  inner.appendChild(topCorner);
-
-  const botCorner = document.createElement('div');
-  botCorner.className = 'card-corner bottom';
-  botCorner.innerHTML = `<span class="c-rank" style="color:${color}">${rk}</span><span class="c-suit-sm">${suitSVG(card.suit, 10)}</span>`;
-  inner.appendChild(botCorner);
-
-  // Center
-  const center = document.createElement('div');
-  center.className = 'card-center';
-
-  if (isFace) {
-    // Face card — show character figure
-    const fw = Math.round(el.offsetWidth || 44);
-    const fh = Math.round((el.offsetHeight || 68) * 0.6);
-    center.innerHTML = faceFigureSVG(card.rank, card.suit, Math.min(fw, 44), Math.min(fh, 56));
-    const sub = document.createElement('div');
-    sub.className = 'face-sub';
-    sub.style.color = color;
-    sub.textContent = RANK_NAMES[card.rank];
-    center.appendChild(sub);
-  } else {
-    // Number card - show pips (Ace gets large ornate suit)
-    const isAce = card.rank === 1;
-    const layout = PIP_LAYOUTS[card.rank];
-    if (layout) {
-      layout.forEach(([px, py]) => {
-        const pip = document.createElement('div');
-        pip.className = 'pip';
-        pip.innerHTML = suitSVG(card.suit, isAce ? 30 : 14);
-        pip.style.left = `${px}%`;
-        pip.style.top = `${py}%`;
-        pip.style.transform = 'translate(-50%,-50%)';
-        center.appendChild(pip);
-      });
-    }
-  }
-
-  inner.appendChild(center);
-
-  // Point indicator
-  const pts = RANK_POINTS[card.rank];
-  if (pts > 0) {
-    const ptBadge = document.createElement('div');
-    ptBadge.style.cssText = `position:absolute;bottom:2px;left:50%;transform:translateX(-50%);font-size:7px;color:${color};opacity:0.5;white-space:nowrap`;
-    ptBadge.textContent = pts === 3 ? '1pt' : '⅓pt';
-    inner.appendChild(ptBadge);
-  }
-
-  el.appendChild(inner);
+  // Use Napoletane card image
+  const img = document.createElement('img');
+  img.className = 'card-img';
+  img.src = `cards/${card.suit}_${card.rank}.png`;
+  img.alt = `${RANK_NAMES[card.rank]} di ${SUIT_NAMES[card.suit]}`;
+  img.draggable = false;
+  el.appendChild(img);
   return el;
 }
 
@@ -986,6 +1103,9 @@ async function playCard(playerIdx, card) {
   // Add to trick
   game.trick.push({ playerIdx, card });
 
+  // Play card sound
+  sndCardPlay();
+
   // Render
   renderAll();
 
@@ -1005,6 +1125,9 @@ async function playCard(playerIdx, card) {
 
     // Flash trick winner
     showStatus(`${PLAYER_NAMES[winner]} prende! (+${formatPunti(pts)})`, 1200);
+
+    // Trick win sound
+    sndTrickWon();
 
     // Save last trick
     game.trickCards = game.trick.map(t => t.card);
@@ -1061,81 +1184,132 @@ async function cpuTurn() {
 }
 
 function cpuSelectCard(playerIdx, playable) {
-  // Strategy for "a perdere": avoid taking points
+  if (gameMode === 'vincere') return cpuSelectCardVincere(playerIdx, playable);
+  return cpuSelectCardPerdere(playerIdx, playable);
+}
 
+// ─── AI: A Perdere (avoid taking points) ──────────────────────
+function cpuSelectCardPerdere(playerIdx, playable) {
   if (game.trick.length === 0) {
-    // Leading: play a card that is likely to be beaten
-    // Play lowest power card from a suit, preferring suits with 0-point cards
-    // Sort by: point value (ascending), then power (ascending = weakest first)
     playable.sort((a, b) => {
       const pa = RANK_POINTS[a.rank], pb = RANK_POINTS[b.rank];
-      if (pa !== pb) return pa - pb; // prefer 0-point cards
-      return RANK_POWER[a.rank] - RANK_POWER[b.rank]; // weakest first
+      if (pa !== pb) return pa - pb;
+      return RANK_POWER[a.rank] - RANK_POWER[b.rank];
     });
-
-    // Play weakest 0-point card if possible, otherwise weakest card
-    // But prefer suits where we have few cards (to get rid of short suits)
     const suitCounts = {};
     game.hands[playerIdx].forEach(c => { suitCounts[c.suit] = (suitCounts[c.suit] || 0) + 1; });
-
-    // Among 0-point cards, prefer suits with fewer cards
     const zeroPoint = playable.filter(c => RANK_POINTS[c.rank] === 0);
     if (zeroPoint.length > 0) {
       zeroPoint.sort((a, b) => {
         const ca = suitCounts[a.suit] || 0, cb = suitCounts[b.suit] || 0;
-        if (ca !== cb) return ca - cb; // fewer cards in suit = more desirable to lead
-        return RANK_POWER[a.rank] - RANK_POWER[b.rank]; // weakest
+        if (ca !== cb) return ca - cb;
+        return RANK_POWER[a.rank] - RANK_POWER[b.rank];
       });
       return zeroPoint[0];
     }
-    return playable[0]; // weakest card
+    return playable[0];
+  }
+  const leadSuit = game.trick[0].card.suit;
+  const following = playable.filter(c => c.suit === leadSuit);
+  if (following.length > 0) {
+    let bestPower = -1;
+    game.trick.forEach(({ card }) => {
+      if (card.suit === leadSuit && RANK_POWER[card.rank] > bestPower) bestPower = RANK_POWER[card.rank];
+    });
+    const under = following.filter(c => RANK_POWER[c.rank] < bestPower);
+    const over = following.filter(c => RANK_POWER[c.rank] > bestPower);
+    if (under.length > 0) {
+      under.sort((a, b) => {
+        const pa = RANK_POINTS[a.rank], pb = RANK_POINTS[b.rank];
+        if (pa !== pb) return pb - pa;
+        return RANK_POWER[b.rank] - RANK_POWER[a.rank];
+      });
+      return under[0];
+    }
+    over.sort((a, b) => {
+      const pa = RANK_POINTS[a.rank], pb = RANK_POINTS[b.rank];
+      if (pa !== pb) return pa - pb;
+      return RANK_POWER[a.rank] - RANK_POWER[b.rank];
+    });
+    return over[0];
+  }
+  playable.sort((a, b) => {
+    const pa = RANK_POINTS[a.rank], pb = RANK_POINTS[b.rank];
+    if (pa !== pb) return pb - pa;
+    return RANK_POWER[b.rank] - RANK_POWER[a.rank];
+  });
+  return playable[0];
+}
+
+// ─── AI: A Vincere (try to take points) ───────────────────────
+function cpuSelectCardVincere(playerIdx, playable) {
+  if (game.trick.length === 0) {
+    // Lead with strong cards to control the trick, prefer high-point suits
+    const suitCounts = {};
+    game.hands[playerIdx].forEach(c => { suitCounts[c.suit] = (suitCounts[c.suit] || 0) + 1; });
+    // Lead from long suits with strong cards
+    playable.sort((a, b) => {
+      const ca = suitCounts[a.suit] || 0, cb = suitCounts[b.suit] || 0;
+      if (ca !== cb) return cb - ca; // prefer longer suits
+      return RANK_POWER[b.rank] - RANK_POWER[a.rank]; // strongest first
+    });
+    // If we have a 3 or 2 (strongest), lead with it to take the trick
+    const strong = playable.filter(c => RANK_POWER[c.rank] >= 8); // 3 or 2
+    if (strong.length > 0) {
+      strong.sort((a, b) => {
+        const ca = suitCounts[a.suit] || 0, cb = suitCounts[b.suit] || 0;
+        if (ca !== cb) return cb - ca;
+        return RANK_POWER[b.rank] - RANK_POWER[a.rank];
+      });
+      return strong[0];
+    }
+    return playable[0];
   }
 
-  // Following
   const leadSuit = game.trick[0].card.suit;
   const following = playable.filter(c => c.suit === leadSuit);
 
   if (following.length > 0) {
-    // Must follow suit
-    // Determine current leader in trick
     let bestPower = -1;
     game.trick.forEach(({ card }) => {
-      if (card.suit === leadSuit && RANK_POWER[card.rank] > bestPower) {
-        bestPower = RANK_POWER[card.rank];
-      }
+      if (card.suit === leadSuit && RANK_POWER[card.rank] > bestPower) bestPower = RANK_POWER[card.rank];
     });
-
-    // If the trick is still ongoing (not all 4 played), try to play under
-    const under = following.filter(c => RANK_POWER[c.rank] < bestPower);
     const over = following.filter(c => RANK_POWER[c.rank] > bestPower);
+    const under = following.filter(c => RANK_POWER[c.rank] < bestPower);
 
+    // Check if trick has points worth taking
+    let trickPts = 0;
+    game.trick.forEach(({ card }) => { trickPts += RANK_POINTS[card.rank]; });
+
+    if (over.length > 0 && trickPts > 0) {
+      // Win the trick with the lowest card that still wins
+      over.sort((a, b) => RANK_POWER[a.rank] - RANK_POWER[b.rank]);
+      return over[0];
+    }
+    if (over.length > 0 && game.trick.length === 3) {
+      // Last to play, take any trick
+      over.sort((a, b) => RANK_POWER[a.rank] - RANK_POWER[b.rank]);
+      return over[0];
+    }
     if (under.length > 0) {
-      // Play the highest card that still loses (to save low cards for later)
-      // But prefer dumping point cards if we won't take the trick
+      // Can't win — save strong cards, dump weakest zero-point cards
       under.sort((a, b) => {
-        // Dump highest point cards first when losing
         const pa = RANK_POINTS[a.rank], pb = RANK_POINTS[b.rank];
-        if (pa !== pb) return pb - pa; // higher points first (dump them!)
-        return RANK_POWER[b.rank] - RANK_POWER[a.rank]; // then highest power
+        if (pa !== pb) return pa - pb; // dump 0-point first
+        return RANK_POWER[a.rank] - RANK_POWER[b.rank]; // weakest
       });
       return under[0];
     }
-
-    // Must play over (will likely take the trick)
-    // Play the lowest power/point card to minimize damage
-    over.sort((a, b) => {
-      const pa = RANK_POINTS[a.rank], pb = RANK_POINTS[b.rank];
-      if (pa !== pb) return pa - pb; // least points
-      return RANK_POWER[a.rank] - RANK_POWER[b.rank]; // weakest
-    });
+    // Must play over but no points in trick — use weakest
+    over.sort((a, b) => RANK_POWER[a.rank] - RANK_POWER[b.rank]);
     return over[0];
   }
 
-  // Can't follow suit: dump highest point cards!
+  // Can't follow suit: dump lowest value cards (save points for own tricks)
   playable.sort((a, b) => {
     const pa = RANK_POINTS[a.rank], pb = RANK_POINTS[b.rank];
-    if (pa !== pb) return pb - pa; // highest points first (dump them)
-    return RANK_POWER[b.rank] - RANK_POWER[a.rank]; // strongest first
+    if (pa !== pb) return pa - pb; // dump 0-point cards
+    return RANK_POWER[a.rank] - RANK_POWER[b.rank]; // weakest
   });
   return playable[0];
 }
@@ -1157,21 +1331,28 @@ function showGameOver() {
   const el = document.getElementById('game-over');
   el.classList.add('show');
 
-  // Determine loser (highest score)
   const maxScore = Math.max(...game.scores);
   const minScore = Math.min(...game.scores);
-  const losers = game.scores.map((s, i) => s === maxScore ? i : -1).filter(i => i >= 0);
-  const winners = game.scores.map((s, i) => s === minScore ? i : -1).filter(i => i >= 0);
 
-  const playerIsLoser = losers.includes(0);
+  // In "a perdere": highest score loses. In "a vincere": highest score wins.
+  const isPerdere = gameMode === 'perdere';
+  const winScore = isPerdere ? minScore : maxScore;
+  const loseScore = isPerdere ? maxScore : minScore;
+
+  const winners = game.scores.map((s, i) => s === winScore ? i : -1).filter(i => i >= 0);
+  const losers = game.scores.map((s, i) => s === loseScore ? i : -1).filter(i => i >= 0);
+
   const playerIsWinner = winners.includes(0);
+  const playerIsLoser = losers.includes(0);
 
-  if (playerIsLoser) {
-    document.getElementById('go-title').textContent = '😞 Hai Perso!';
-    document.getElementById('go-title').style.color = '#f44';
-  } else if (playerIsWinner) {
+  if (playerIsWinner) {
     document.getElementById('go-title').textContent = '🎉 Hai Vinto!';
     document.getElementById('go-title').style.color = '#4f4';
+    sndWin();
+  } else if (playerIsLoser) {
+    document.getElementById('go-title').textContent = '😞 Hai Perso!';
+    document.getElementById('go-title').style.color = '#f44';
+    sndLose();
   } else {
     document.getElementById('go-title').textContent = '🃏 Fine Partita';
     document.getElementById('go-title').style.color = '#fa4';
@@ -1180,19 +1361,19 @@ function showGameOver() {
   const resultsEl = document.getElementById('go-results');
   resultsEl.innerHTML = '';
 
-  // Sort by score (lowest first = best)
+  // Sort: in perdere lowest first = best, in vincere highest first = best
   const sorted = game.scores.map((s, i) => ({ name: PLAYER_NAMES[i], score: s, idx: i }))
-    .sort((a, b) => a.score - b.score);
+    .sort((a, b) => isPerdere ? a.score - b.score : b.score - a.score);
 
   sorted.forEach((p, rank) => {
-    const isLoser = p.score === maxScore;
-    const isWinner = p.score === minScore;
+    const isWinner = p.score === winScore;
+    const isLoser = p.score === loseScore;
     const row = document.createElement('div');
     row.className = 'go-result-row' + (isLoser ? ' loser' : '') + (isWinner ? ' winner' : '');
     row.innerHTML =
       `<span class="grr-name">${rank + 1}° ${p.name}</span>` +
       `<span class="grr-pts">${formatPuntiLong(p.score)}</span>` +
-      `<span class="grr-status">${isLoser ? '❌ PERDE' : isWinner ? '✅ VINCE' : ''}</span>`;
+      `<span class="grr-status">${isWinner ? '✅ VINCE' : isLoser ? '❌ PERDE' : ''}</span>`;
     resultsEl.appendChild(row);
   });
 }
@@ -1203,19 +1384,19 @@ function showGameOver() {
 (function populateOverlay() {
   const previewRow = document.getElementById('preview-row');
   const previewCards = [
-    {r:'A', s:'coppe'}, {r:'3', s:'denari'}, {r:'R', s:'bastoni'},
-    {r:'2', s:'spade'}, {r:'C', s:'coppe'}, {r:'7', s:'denari'}
+    {r:1, s:'coppe'}, {r:3, s:'denari'}, {r:10, s:'bastoni'},
+    {r:2, s:'spade'}, {r:9, s:'coppe'}, {r:7, s:'denari'}
   ];
   previewCards.forEach(({r, s}) => {
     const d = document.createElement('div');
-    d.className = `preview-card suit-${s}`;
-    d.innerHTML = `<span class="pc-rank" style="color:${SUIT_COLORS[s]}">${r}</span><span class="pc-suit">${suitSVG(s, 18)}</span>`;
+    d.className = 'preview-card';
+    d.innerHTML = `<img src="cards/${s}_${r}.png" alt="${RANK_NAMES[r]} di ${SUIT_NAMES[s]}" draggable="false">`;
     previewRow.appendChild(d);
   });
 
   const infoSuits = document.getElementById('info-suits');
   infoSuits.innerHTML = `<b>Semi:</b> ${SUITS.map(s =>
-    `${suitSVG(s, 14)} ${SUIT_NAMES[s]}`
+    `${SUIT_ICONS[s]} ${SUIT_NAMES[s]}`
   ).join(' · ')}`;
 })();
 
@@ -1223,12 +1404,12 @@ document.getElementById('play-btn').onclick = startGame;
 document.getElementById('play-btn').addEventListener('touchend', (e) => { e.preventDefault(); startGame(); }, { passive: false });
 document.getElementById('retry-btn').onclick = () => {
   document.getElementById('game-over').classList.remove('show');
-  startGame();
+  document.getElementById('overlay').classList.remove('hidden');
 };
 document.getElementById('retry-btn').addEventListener('touchend', (e) => {
   e.preventDefault();
   document.getElementById('game-over').classList.remove('show');
-  startGame();
+  document.getElementById('overlay').classList.remove('hidden');
 }, { passive: false });
 document.getElementById('rules-btn').onclick = () => {
   document.getElementById('rules-panel').classList.add('show');
@@ -1247,11 +1428,23 @@ window.addEventListener('orientationchange', () => {
 });
 
 function startGame() {
+  initAudio();
   document.getElementById('overlay').classList.add('hidden');
   document.getElementById('game-over').classList.remove('show');
+
+  // Update rules panel based on mode
+  const isPerdere = gameMode === 'perdere';
+  document.getElementById('rules-title').textContent = isPerdere ? '📜 Tresette a Perdere' : '📜 Tresette a Vincere';
+  document.getElementById('rules-objective').innerHTML = isPerdere
+    ? '<b>Obiettivo:</b> Prendere il <b>minor numero di punti</b> possibile. Chi fa più punti <b>perde!</b>'
+    : '<b>Obiettivo:</b> Prendere il <b>maggior numero di punti</b> possibile. Chi fa più punti <b>vince!</b>';
+
   initGame();
   renderAll();
-  showStatus('Buona Fortuna! 🃏', 1500);
+  showStatus(isPerdere ? 'A Perdere — Buona Fortuna! 🃏' : 'A Vincere — Buona Fortuna! 🃏', 1500);
+
+  // Start sound after a small delay to let AudioContext fully resume
+  setTimeout(() => { sndStart(); }, 150);
 
   // If first player is CPU (random lead), trigger AI
   // For first round, player 0 (South) always leads
@@ -1269,5 +1462,6 @@ window.addEventListener('resize', () => {
   }, 100);
 });
 </script>
+
 </body>
 </html>
