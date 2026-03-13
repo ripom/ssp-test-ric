@@ -257,6 +257,54 @@
   #legend .leg-item .sym.pellet { color: #fff; }
   #legend .leg-item .sym.wall { color: #44f; }
   #legend .leg-item .key { color: #ff0; font-weight: bold; }
+  #volume-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+  }
+  #volume-bar .vol-lbl {
+    color: #0ff;
+    font-size: 13px;
+  }
+  #volume-bar input[type=range] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 120px;
+    height: 6px;
+    background: rgba(255,255,255,0.15);
+    border-radius: 3px;
+    outline: none;
+  }
+  #volume-bar input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #ff0;
+    cursor: pointer;
+  }
+  #volume-bar input[type=range]::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #ff0;
+    cursor: pointer;
+    border: none;
+  }
+  #volume-bar .vol-val {
+    color: #ff0;
+    font-size: 12px;
+    min-width: 32px;
+  }
+  #audio-status {
+    font-size: 11px;
+    color: #666;
+    margin-top: 4px;
+  }
+  #audio-status.ok { color: #0f0; }
+  #audio-status.err { color: #f44; }
 </style>
 </head>
 <body>
@@ -281,6 +329,12 @@
   <button data-speed="8">8</button>
   <button data-speed="9">9</button>
 </div>
+<div id="volume-bar">
+  <span class="vol-lbl">🔊 Vol:</span>
+  <input type="range" id="vol-slider" min="0" max="100" value="70">
+  <span class="vol-val" id="vol-val">70%</span>
+</div>
+<div id="audio-status">Audio: click START to activate</div>
 <div id="legend">
   <div class="leg-group">
     <div class="leg-title">Characters</div>
@@ -373,11 +427,11 @@ const COLS = MAZE_TEMPLATE[0].length;
 // ─── Constants ────────────────────────────────────────────────
 const CELL = Math.max(12, Math.min(20, Math.floor((Math.min(window.innerWidth - 16, 560)) / COLS)));
 const UP = 0, DOWN = 1, LEFT = 2, RIGHT = 3, NONE = -1;
-const DIR_DELTA = { [UP]:[-1,0], [DOWN]:[1,0], [LEFT]:[0,-1], [RIGHT]:[0,1], [NONE]:[0,0] };
-const REVERSE = { [UP]:DOWN, [DOWN]:UP, [LEFT]:RIGHT, [RIGHT]:LEFT };
+const DX = [0, 0, -1, 1, 0];  // indexed by UP,DOWN,LEFT,RIGHT,NONE
+const DY = [-1, 1, 0, 0, 0];
+const REVERSE = [1, 0, 3, 2]; // UP<->DOWN, LEFT<->RIGHT
 
 const GHOST_COLORS = ["#f00","#ffb8ff","#0ff","#0f0"];
-const GHOST_NAMES  = ["Blinky","Pinky","Inky","Clyde"];
 
 // ─── Canvas Setup ─────────────────────────────────────────────
 const canvas = document.getElementById("game-canvas");
@@ -385,46 +439,275 @@ const ctx = canvas.getContext("2d");
 canvas.width  = COLS * CELL;
 canvas.height = ROWS * CELL;
 
-// ─── Game State ───────────────────────────────────────────────
-let maze, pacRow, pacCol, pacDir, nextDir, pacMouthOpen, mouthTimer;
-let ghosts, score, lives, level, totalDots, dotsEaten;
-let gameOver, won, paused, running;
-let messageTxt, messageTimer, flashTimer, tick;
-let speedLevel = 5;
-//                    1    2    3    4    5    6    7    8    9
-const SPEED_TICKS = [250, 200, 160, 130, 100, 80,  60,  40,  25];
+// ─── Sound Engine ─────────────────────────────────────────────
+// Uses AudioContext + AudioBuffer for guaranteed playback.
+// AudioContext is created ONLY inside user gesture handlers.
+// All sounds are pre-generated as Float32 sample arrays at page load
+// and converted to AudioBuffers once the context exists.
 
-function setSpeed(level) {
-  speedLevel = Math.max(1, Math.min(9, level));
+const SR = 22050; // sample rate
+let audioCtx = null;
+let masterGain = null;
+let volumeLevel = 0.7;
+let audioBuffers = {};  // name -> AudioBuffer
+let bgmSource = null;
+let bgmGain = null;
+
+const statusEl = () => document.getElementById('audio-status');
+function setAudioStatus(msg, ok) {
+  const el = statusEl();
+  if (el) { el.textContent = 'Audio: ' + msg; el.className = ok ? 'ok' : (ok === false ? 'err' : ''); }
+}
+
+// Generate a tone as Float32 samples
+function genSamples(freq, duration, type, vol) {
+  const n = Math.floor(SR * duration);
+  const out = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    const t = i / SR;
+    const env = vol * Math.max(0, 1 - t / duration);
+    const phase = (freq * t) % 1;
+    let w;
+    if (type === 'square') w = phase < 0.5 ? 1 : -1;
+    else if (type === 'sawtooth') w = 2 * phase - 1;
+    else if (type === 'sine') w = Math.sin(2 * Math.PI * freq * t);
+    else w = phase < 0.5 ? 1 : -1;
+    out[i] = w * env;
+  }
+  return out;
+}
+
+// Mix multiple tones into a single Float32Array
+function mixTones(tones) {
+  const totalDur = Math.max(...tones.map(t => (t.delay || 0) + t.dur)) + 0.02;
+  const n = Math.floor(SR * totalDur);
+  const out = new Float32Array(n);
+  for (const t of tones) {
+    if (t.freq <= 0) continue;
+    const s = genSamples(t.freq, t.dur, t.type, t.vol);
+    const off = Math.floor((t.delay || 0) * SR);
+    for (let i = 0; i < s.length && off + i < n; i++) out[off + i] += s[i];
+  }
+  for (let i = 0; i < n; i++) out[i] = Math.max(-1, Math.min(1, out[i]));
+  return out;
+}
+
+// Pre-generate all sounds as raw Float32 arrays (no AudioContext needed yet)
+const RAW_SOUNDS = {
+  chomp: mixTones([{freq:587, dur:0.09, type:'square', vol:0.8}]),
+  pellet: mixTones([
+    {freq:220, dur:0.25, type:'sawtooth', vol:0.9},
+    {freq:165, dur:0.3, type:'sawtooth', vol:0.8, delay:0.12}
+  ]),
+  eatGhost: mixTones([
+    {freq:800, dur:0.1, type:'square', vol:0.9},
+    {freq:1200, dur:0.15, type:'square', vol:0.8, delay:0.1},
+    {freq:1600, dur:0.12, type:'square', vol:0.7, delay:0.2}
+  ]),
+  death: mixTones(
+    Array.from({length:8}, (_,i) => ({freq:500-i*50, dur:0.18, type:'sawtooth', vol:0.8, delay:i*0.09}))
+  ),
+  levelUp: mixTones(
+    [523,659,784,1047].map((f,i) => ({freq:f, dur:0.2, type:'square', vol:0.8, delay:i*0.13}))
+  ),
+  gameOver: mixTones(
+    [400,350,300,250,200,150].map((f,i) => ({freq:f, dur:0.3, type:'sawtooth', vol:0.9, delay:i*0.16}))
+  ),
+  start: mixTones(
+    [262,330,392,523].map((f,i) => ({freq:f, dur:0.18, type:'square', vol:0.8, delay:i*0.11}))
+  ),
+};
+
+// BGM melody
+function generateBGMSamples() {
+  const notes = [
+    {freq:262,dur:0.15},{freq:330,dur:0.15},{freq:392,dur:0.15},{freq:330,dur:0.15},
+    {freq:262,dur:0.3},{freq:0,dur:0.1},
+    {freq:247,dur:0.15},{freq:294,dur:0.15},{freq:349,dur:0.15},{freq:294,dur:0.15},
+    {freq:247,dur:0.3},{freq:0,dur:0.1},
+    {freq:262,dur:0.15},{freq:330,dur:0.15},{freq:392,dur:0.15},{freq:523,dur:0.2},
+    {freq:494,dur:0.15},{freq:440,dur:0.15},{freq:392,dur:0.15},{freq:330,dur:0.15},
+    {freq:262,dur:0.4},{freq:0,dur:0.2},
+  ];
+  let total = 0; for (const n of notes) total += n.dur;
+  const len = Math.floor(SR * total);
+  const out = new Float32Array(len);
+  let off = 0;
+  for (const n of notes) {
+    if (n.freq > 0) {
+      const s = genSamples(n.freq, n.dur * 0.9, 'sine', 0.35);
+      for (let i = 0; i < s.length && off + i < len; i++) out[off + i] = s[i];
+    }
+    off += Math.floor(n.dur * SR);
+  }
+  return out;
+}
+const RAW_BGM = generateBGMSamples();
+
+// Convert Float32Array to AudioBuffer
+function samplesToBuffer(samples) {
+  const buf = audioCtx.createBuffer(1, samples.length, SR);
+  buf.getChannelData(0).set(samples);
+  return buf;
+}
+
+// Initialize AudioContext — MUST be called inside a click/touch handler
+function initAudio() {
+  if (audioCtx) {
+    if (audioCtx.state === 'suspended') {
+      audioCtx.resume().then(() => setAudioStatus('active ✓', true));
+    }
+    return;
+  }
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    audioCtx = new AC();
+    masterGain = audioCtx.createGain();
+    masterGain.gain.value = volumeLevel;
+    masterGain.connect(audioCtx.destination);
+
+    // Convert all raw sounds to AudioBuffers
+    for (const [name, raw] of Object.entries(RAW_SOUNDS)) {
+      audioBuffers[name] = samplesToBuffer(raw);
+    }
+    audioBuffers.bgm = samplesToBuffer(RAW_BGM);
+
+    audioCtx.resume().then(() => {
+      setAudioStatus('active ✓', true);
+    }).catch(() => setAudioStatus('blocked ✗', false));
+
+    setAudioStatus('initialized...', null);
+  } catch(e) {
+    setAudioStatus('error: ' + e.message, false);
+  }
+}
+
+function playBuffer(name) {
+  if (!audioCtx || !audioBuffers[name]) return;
+  try {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const src = audioCtx.createBufferSource();
+    src.buffer = audioBuffers[name];
+    src.connect(masterGain);
+    src.start(0);
+  } catch(e) {}
+}
+
+function setVolume(v) {
+  volumeLevel = Math.max(0, Math.min(1, v));
+  if (masterGain) masterGain.gain.value = volumeLevel;
+  if (bgmGain) bgmGain.gain.value = volumeLevel * 0.35;
+  document.getElementById('vol-val').textContent = Math.round(volumeLevel * 100) + '%';
+}
+
+let _lastChomp = 0;
+function sndChomp() {
+  const t = performance.now();
+  if (t - _lastChomp < 100) return;
+  _lastChomp = t;
+  playBuffer('chomp');
+}
+function sndPellet()   { playBuffer('pellet'); }
+function sndEatGhost() { playBuffer('eatGhost'); }
+function sndDeath()    { playBuffer('death'); }
+function sndLevelUp()  { playBuffer('levelUp'); }
+function sndGameOver() { playBuffer('gameOver'); }
+function sndStart()    { playBuffer('start'); }
+
+// ─── Background Music ────────────────────────────────────────
+function startBGM() {
+  stopBGM();
+  if (!audioCtx || !audioBuffers.bgm) return;
+  try {
+    bgmSource = audioCtx.createBufferSource();
+    bgmSource.buffer = audioBuffers.bgm;
+    bgmSource.loop = true;
+    bgmGain = audioCtx.createGain();
+    bgmGain.gain.value = volumeLevel * 0.35;
+    bgmSource.connect(bgmGain);
+    bgmGain.connect(audioCtx.destination);
+    bgmSource.start(0);
+  } catch(e) {}
+}
+
+function stopBGM() {
+  try { if (bgmSource) { bgmSource.stop(); bgmSource.disconnect(); } } catch(e) {}
+  bgmSource = null;
+  bgmGain = null;
+}
+
+// ─── Game State ───────────────────────────────────────────────
+let maze, totalDots, dotsEaten;
+let score, lives, level, gameOver, won, paused, running;
+let messageTxt, messageTimer, flashTimer;
+let speedLevel = 5;
+// Pixels per second at each speed level
+const SPEEDS = [40, 55, 75, 95, 120, 150, 190, 240, 310];
+
+function setSpeed(lv) {
+  speedLevel = Math.max(1, Math.min(9, lv));
   document.querySelectorAll('#speed-bar button').forEach(btn => {
     btn.classList.toggle('active', parseInt(btn.dataset.speed) === speedLevel);
   });
 }
 
+// ─── Entity: pixel-based position, grid cell tracked separately ──
+// x, y = pixel center. dir = current direction. nextDir = queued input.
+// At each cell center we decide if we can continue or must stop.
+let pac, ghosts;
+
+function cellCenterX(col) { return col * CELL + CELL / 2; }
+function cellCenterY(row) { return row * CELL + CELL / 2; }
+function pixToCol(x) { return Math.floor(x / CELL); }
+function pixToRow(y) { return Math.floor(y / CELL); }
+
+function makePac(r, c) {
+  return {
+    x: cellCenterX(c), y: cellCenterY(r),
+    dir: NONE, nextDir: NONE, mouthPhase: 0
+  };
+}
+function makeGhost(r, c, idx) {
+  return {
+    x: cellCenterX(c), y: cellCenterY(r),
+    startRow: r, startCol: c, idx: idx,
+    dir: [UP, DOWN, LEFT, RIGHT][Math.floor(Math.random() * 4)],
+    frightened: false, frightenedTimer: 0, eaten: false
+  };
+}
+
+// ─── Level difficulty ─────────────────────────────────────────
+function getLevelSettings() {
+  const l = level;
+  return {
+    ghostSpeedMult:   Math.min(1.0 + (l - 1) * 0.1, 1.8),
+    ghostChaseChance: Math.min(0.7 + (l - 1) * 0.04, 0.95),
+    frightenedTime:   Math.max(6.0 - (l - 1) * 0.5, 2.0),
+    pacSpeedMult:     Math.min(1.0 + (l - 1) * 0.04, 1.3),
+  };
+}
+
+// ─── Maze helpers ─────────────────────────────────────────────
+function isWall(r, c) {
+  if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return true;
+  return maze[r][c] === '#';
+}
+function wrapCol(c) { return c < 0 ? COLS - 1 : c >= COLS ? 0 : c; }
+function canGo(r, c, d) {
+  return !isWall(r + DY[d], wrapCol(c + DX[d]));
+}
+
+// ─── Init / Reset ─────────────────────────────────────────────
 function initMaze() {
-  maze = [];
-  ghosts = [];
-  totalDots = 0;
-  dotsEaten = 0;
-  let ghostIdx = 0;
+  maze = []; ghosts = []; totalDots = 0; dotsEaten = 0;
+  let gi = 0;
   for (let r = 0; r < ROWS; r++) {
     const row = [];
     for (let c = 0; c < COLS; c++) {
       const ch = MAZE_TEMPLATE[r][c];
-      if (ch === "P") {
-        pacRow = r; pacCol = c;
-        pacDir = NONE; nextDir = NONE;
-        row.push(" ");
-      } else if (ch === "G") {
-        ghosts.push({ row: r, col: c, startRow: r, startCol: c, idx: ghostIdx,
-          dir: [UP,DOWN,LEFT,RIGHT][Math.floor(Math.random()*4)],
-          frightened: false, frightenedTimer: 0, eaten: false });
-        ghostIdx++;
-        row.push(" ");
-      } else {
-        if (ch === "." || ch === "o") totalDots++;
-        row.push(ch);
-      }
+      if (ch === 'P') { pac = makePac(r, c); row.push(' '); }
+      else if (ch === 'G') { ghosts.push(makeGhost(r, c, gi++)); row.push(' '); }
+      else { if (ch === '.' || ch === 'o') totalDots++; row.push(ch); }
     }
     maze.push(row);
   }
@@ -433,10 +716,13 @@ function initMaze() {
 function resetPositions() {
   for (let r = 0; r < ROWS; r++)
     for (let c = 0; c < COLS; c++)
-      if (MAZE_TEMPLATE[r][c] === "P") { pacRow = r; pacCol = c; pacDir = NONE; nextDir = NONE; }
+      if (MAZE_TEMPLATE[r][c] === 'P') {
+        pac.x = cellCenterX(c); pac.y = cellCenterY(r);
+        pac.dir = NONE; pac.nextDir = NONE;
+      }
   for (const g of ghosts) {
-    g.row = g.startRow; g.col = g.startCol;
-    g.dir = [UP,DOWN,LEFT,RIGHT][Math.floor(Math.random()*4)];
+    g.x = cellCenterX(g.startCol); g.y = cellCenterY(g.startRow);
+    g.dir = [UP, DOWN, LEFT, RIGHT][Math.floor(Math.random() * 4)];
     g.frightened = false; g.frightenedTimer = 0; g.eaten = false;
   }
 }
@@ -444,346 +730,445 @@ function resetPositions() {
 function fullReset() {
   score = 0; lives = 3; level = 1;
   gameOver = false; won = false; paused = false;
-  pacMouthOpen = true; mouthTimer = 0;
-  messageTxt = ""; messageTimer = 0; flashTimer = 0; tick = 0;
-  initMaze();
-  updateHUD();
+  messageTxt = ''; messageTimer = 0; flashTimer = 0;
+  initMaze(); updateHUD();
 }
 
-// ─── Maze helpers ─────────────────────────────────────────────
-function isWall(r, c) {
-  if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return true;
-  return maze[r][c] === "#";
-}
-function wrapCol(c) { return c < 0 ? COLS - 1 : c >= COLS ? 0 : c; }
-function canMove(r, c, d) {
-  const [dr, dc] = DIR_DELTA[d];
-  return !isWall(r + dr, wrapCol(c + dc));
+function nextLevel() {
+  level++; sndLevelUp();
+  showMessage('LEVEL ' + level + '!');
+  initMaze(); updateHUD();
 }
 
-// ─── Pacman ───────────────────────────────────────────────────
-function movePacman() {
-  if (nextDir !== NONE && canMove(pacRow, pacCol, nextDir)) { pacDir = nextDir; nextDir = NONE; }
-  if (pacDir === NONE) return;
-  if (canMove(pacRow, pacCol, pacDir)) {
-    const [dr, dc] = DIR_DELTA[pacDir];
-    pacRow += dr; pacCol = wrapCol(pacCol + dc);
-    const cell = maze[pacRow][pacCol];
-    if (cell === ".") { maze[pacRow][pacCol] = " "; score += 10; dotsEaten++; }
-    else if (cell === "o") {
-      maze[pacRow][pacCol] = " "; score += 50; dotsEaten++;
-      for (const g of ghosts) if (!g.eaten) { g.frightened = true; g.frightenedTimer = 50; }
+// ─── Core pixel movement ──────────────────────────────────────
+// Move an entity by `dist` pixels in direction `d`.
+// When crossing a cell center, snap to it and return the remainder + the cell coords.
+// This is the key to smooth movement: we move in fractional pixels every frame.
+
+function moveEntity(entity, d, dist) {
+  if (d === NONE || dist <= 0) return;
+  const dx = DX[d] * dist;
+  const dy = DY[d] * dist;
+  entity.x += dx;
+  entity.y += dy;
+  // Tunnel wrap
+  if (entity.x < -CELL / 2) entity.x += COLS * CELL;
+  if (entity.x > COLS * CELL + CELL / 2) entity.x -= COLS * CELL;
+}
+
+function snapToCenter(entity) {
+  const col = pixToCol(entity.x);
+  const row = pixToRow(entity.y);
+  entity.x = cellCenterX(col);
+  entity.y = cellCenterY(row);
+}
+
+// Check if entity is at (or just crossed) cell center
+function atCellCenter(entity, d) {
+  const col = pixToCol(entity.x);
+  const row = pixToRow(entity.y);
+  const cx = cellCenterX(col);
+  const cy = cellCenterY(row);
+  const tolerance = 1.5;
+  return Math.abs(entity.x - cx) <= tolerance && Math.abs(entity.y - cy) <= tolerance;
+}
+
+// Check if entity has passed the center of its current cell in its direction
+function passedCenter(entity, d) {
+  const col = pixToCol(entity.x);
+  const row = pixToRow(entity.y);
+  const cx = cellCenterX(col);
+  const cy = cellCenterY(row);
+  if (d === LEFT)  return entity.x <= cx;
+  if (d === RIGHT) return entity.x >= cx;
+  if (d === UP)    return entity.y <= cy;
+  if (d === DOWN)  return entity.y >= cy;
+  return true;
+}
+
+// ─── Pacman update ────────────────────────────────────────────
+function updatePacman(dt) {
+  const settings = getLevelSettings();
+  const speed = SPEEDS[speedLevel - 1] * settings.pacSpeedMult;
+  const dist = speed * dt;
+
+  // Current grid cell
+  const col = pixToCol(pac.x);
+  const row = pixToRow(pac.y);
+
+  // At cell center: try turning or check wall ahead
+  if (atCellCenter(pac, pac.dir)) {
+    // Pickup items
+    const cell = maze[row][col];
+    if (cell === '.') {
+      maze[row][col] = ' '; score += 10; dotsEaten++; sndChomp();
+    } else if (cell === 'o') {
+      maze[row][col] = ' '; score += 50; dotsEaten++; sndPellet();
+      const ft = settings.frightenedTime;
+      for (const g of ghosts) if (!g.eaten) { g.frightened = true; g.frightenedTimer = ft; }
     }
-    if (dotsEaten >= totalDots) won = true;
+    if (dotsEaten >= totalDots) { won = true; return; }
+
+    // Try queued turn
+    if (pac.nextDir !== NONE && canGo(row, col, pac.nextDir)) {
+      pac.dir = pac.nextDir;
+      pac.nextDir = NONE;
+      snapToCenter(pac);
+    }
+    // Check wall ahead
+    if (pac.dir !== NONE && !canGo(row, col, pac.dir)) {
+      snapToCenter(pac);
+      pac.dir = NONE;
+      return;
+    }
   }
-  mouthTimer++;
-  if (mouthTimer >= 2) { pacMouthOpen = !pacMouthOpen; mouthTimer = 0; }
+
+  if (pac.dir !== NONE) {
+    moveEntity(pac, pac.dir, dist);
+    // Don't overshoot into walls
+    const nc = pixToCol(pac.x);
+    const nr = pixToRow(pac.y);
+    if (isWall(nr, wrapCol(nc))) {
+      // Snap back to the last safe center
+      pac.x -= DX[pac.dir] * dist;
+      pac.y -= DY[pac.dir] * dist;
+      snapToCenter(pac);
+      pac.dir = NONE;
+    }
+  }
+
+  pac.mouthPhase += dt * 14;
 }
 
-// ─── Ghosts ───────────────────────────────────────────────────
-function moveGhosts() {
+// ─── Ghost update ─────────────────────────────────────────────
+function updateGhosts(dt) {
+  const settings = getLevelSettings();
+  const baseSpeed = SPEEDS[speedLevel - 1];
+
   for (const g of ghosts) {
-    if (g.eaten) {
-      if (g.row === g.startRow && g.col === g.startCol) { g.eaten = false; g.frightened = false; continue; }
-      let dr = g.row < g.startRow ? 1 : g.row > g.startRow ? -1 : 0;
-      let dc = g.col < g.startCol ? 1 : g.col > g.startCol ? -1 : 0;
-      if (dr !== 0 && !isWall(g.row + dr, g.col)) g.row += dr;
-      else if (dc !== 0 && !isWall(g.row, g.col + dc)) g.col += dc;
-      continue;
+    if (g.frightened && !g.eaten) {
+      g.frightenedTimer -= dt;
+      if (g.frightenedTimer <= 0) g.frightened = false;
     }
-    if (g.frightened) { g.frightenedTimer--; if (g.frightenedTimer <= 0) g.frightened = false; }
-    let possible = [];
-    for (const d of [UP,DOWN,LEFT,RIGHT]) {
-      if (canMove(g.row, g.col, d) && d !== REVERSE[g.dir]) possible.push(d);
+
+    const spd = g.eaten ? baseSpeed * 2.5 :
+                g.frightened ? baseSpeed * settings.ghostSpeedMult * 0.5 :
+                baseSpeed * settings.ghostSpeedMult;
+    const dist = spd * dt;
+
+    const col = pixToCol(g.x);
+    const row = pixToRow(g.y);
+    const pCol = pixToCol(pac.x);
+    const pRow = pixToRow(pac.y);
+
+    if (atCellCenter(g, g.dir)) {
+      snapToCenter(g);
+
+      // Eaten: head home
+      if (g.eaten) {
+        if (row === g.startRow && col === g.startCol) {
+          g.eaten = false; g.frightened = false; continue;
+        }
+        let bd = NONE, bDist = Infinity;
+        for (let d = 0; d < 4; d++) {
+          if (!canGo(row, col, d)) continue;
+          const nr = row + DY[d], nc = wrapCol(col + DX[d]);
+          const dd = (nr - g.startRow) ** 2 + (nc - g.startCol) ** 2;
+          if (dd < bDist) { bDist = dd; bd = d; }
+        }
+        if (bd !== NONE) g.dir = bd;
+        moveEntity(g, g.dir, dist);
+        continue;
+      }
+
+      // Choose direction at cell center
+      let possible = [];
+      for (let d = 0; d < 4; d++) {
+        if (canGo(row, col, d) && d !== REVERSE[g.dir]) possible.push(d);
+      }
+      if (!possible.length) {
+        for (let d = 0; d < 4; d++) if (canGo(row, col, d)) possible.push(d);
+      }
+      if (!possible.length) continue;
+
+      if (g.frightened) {
+        // Flee pacman
+        g.dir = possible.reduce((best, d) => {
+          const nr = row + DY[d], nc = col + DX[d];
+          const dd = (nr - pRow) ** 2 + (nc - pCol) ** 2;
+          const bd = (row + DY[best] - pRow) ** 2 + (col + DX[best] - pCol) ** 2;
+          return dd > bd ? d : best;
+        }, possible[0]);
+      } else if (Math.random() < settings.ghostChaseChance) {
+        // Chase pacman
+        g.dir = possible.reduce((best, d) => {
+          const nr = row + DY[d], nc = col + DX[d];
+          const dd = (nr - pRow) ** 2 + (nc - pCol) ** 2;
+          const bd = (row + DY[best] - pRow) ** 2 + (col + DX[best] - pCol) ** 2;
+          return dd < bd ? d : best;
+        }, possible[0]);
+      } else {
+        g.dir = possible[Math.floor(Math.random() * possible.length)];
+      }
     }
-    if (!possible.length) {
-      for (const d of [UP,DOWN,LEFT,RIGHT]) if (canMove(g.row, g.col, d)) possible.push(d);
+
+    moveEntity(g, g.dir, dist);
+
+    // Prevent overshooting into walls
+    const nc2 = pixToCol(g.x);
+    const nr2 = pixToRow(g.y);
+    if (isWall(nr2, wrapCol(nc2))) {
+      g.x -= DX[g.dir] * dist;
+      g.y -= DY[g.dir] * dist;
+      snapToCenter(g);
     }
-    if (!possible.length) continue;
-    if (g.frightened) {
-      g.dir = possible.reduce((best, d) => {
-        const dist = (g.row+DIR_DELTA[d][0]-pacRow)**2 + (g.col+DIR_DELTA[d][1]-pacCol)**2;
-        const bestDist = (g.row+DIR_DELTA[best][0]-pacRow)**2 + (g.col+DIR_DELTA[best][1]-pacCol)**2;
-        return dist > bestDist ? d : best;
-      }, possible[0]);
-    } else if (Math.random() < 0.7) {
-      g.dir = possible.reduce((best, d) => {
-        const dist = (g.row+DIR_DELTA[d][0]-pacRow)**2 + (g.col+DIR_DELTA[d][1]-pacCol)**2;
-        const bestDist = (g.row+DIR_DELTA[best][0]-pacRow)**2 + (g.col+DIR_DELTA[best][1]-pacCol)**2;
-        return dist < bestDist ? d : best;
-      }, possible[0]);
-    } else {
-      g.dir = possible[Math.floor(Math.random()*possible.length)];
-    }
-    const [dr, dc] = DIR_DELTA[g.dir];
-    const nr = g.row + dr, nc = wrapCol(g.col + dc);
-    if (!isWall(nr, nc)) { g.row = nr; g.col = nc; }
   }
 }
 
 // ─── Collisions ───────────────────────────────────────────────
 function checkCollisions() {
+  const thresh = CELL * 0.55;
   for (const g of ghosts) {
-    if (g.row === pacRow && g.col === pacCol) {
+    const dx = pac.x - g.x, dy = pac.y - g.y;
+    if (dx * dx + dy * dy < thresh * thresh) {
       if (g.frightened && !g.eaten) {
-        g.eaten = true; score += 200;
-        showMessage("YUM! +200");
+        g.eaten = true; score += 200; sndEatGhost(); showMessage('YUM! +200');
       } else if (!g.eaten) {
-        lives--;
-        if (lives <= 0) { gameOver = true; }
-        else { showMessage("OUCH! Lives: " + lives); resetPositions(); }
+        lives--; sndDeath();
+        if (lives <= 0) { gameOver = true; sndGameOver(); }
+        else { showMessage('OUCH! Lives: ' + lives); resetPositions(); }
         return;
       }
     }
   }
 }
 
-function showMessage(txt) { messageTxt = txt; messageTimer = 20; }
+function showMessage(txt) { messageTxt = txt; messageTimer = 2.0; }
 
 // ─── HUD ──────────────────────────────────────────────────────
-function updateHUD() {
-  document.getElementById("score").textContent = score;
-  document.getElementById("lives").textContent = "◉ ".repeat(lives).trim();
-  document.getElementById("level").textContent = level;
-  const msgEl = document.getElementById("message");
-  if (messageTimer > 0) { messageTimer--; msgEl.textContent = messageTxt; }
-  else msgEl.textContent = "";
+function updateHUD(dt) {
+  document.getElementById('score').textContent = score;
+  document.getElementById('lives').textContent = '◉ '.repeat(lives).trim();
+  document.getElementById('level').textContent = level;
+  const el = document.getElementById('message');
+  if (messageTimer > 0) { if (dt) messageTimer -= dt; el.textContent = messageTxt; }
+  else el.textContent = '';
 }
 
 // ─── Drawing ──────────────────────────────────────────────────
 function draw() {
-  ctx.fillStyle = "#000";
+  ctx.fillStyle = '#000';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
-
   flashTimer++;
 
+  // Maze
   for (let r = 0; r < ROWS; r++) {
     for (let c = 0; c < COLS; c++) {
       const ch = maze[r][c];
       const x = c * CELL, y = r * CELL;
-      if (ch === "#") {
-        // Draw classic outlined walls
-        ctx.strokeStyle = "#44f";
-        ctx.lineWidth = 2;
-        // Check neighbors to draw connecting wall segments
-        const top    = (r > 0 && maze[r-1][c] === "#");
-        const bottom = (r < ROWS-1 && maze[r+1][c] === "#");
-        const left   = (c > 0 && maze[r][c-1] === "#");
-        const right  = (c < COLS-1 && maze[r][c+1] === "#");
-        const cx = x + CELL/2, cy = y + CELL/2;
+      if (ch === '#') {
+        ctx.strokeStyle = '#44f'; ctx.lineWidth = 2;
+        const t = r > 0 && maze[r-1][c] === '#';
+        const b = r < ROWS-1 && maze[r+1][c] === '#';
+        const l = c > 0 && maze[r][c-1] === '#';
+        const ri = c < COLS-1 && maze[r][c+1] === '#';
+        const cx = x+CELL/2, cy = y+CELL/2;
         ctx.beginPath();
-        if (top)    { ctx.moveTo(cx, y); ctx.lineTo(cx, cy); }
-        if (bottom) { ctx.moveTo(cx, cy); ctx.lineTo(cx, y+CELL); }
-        if (left)   { ctx.moveTo(x, cy); ctx.lineTo(cx, cy); }
-        if (right)  { ctx.moveTo(cx, cy); ctx.lineTo(x+CELL, cy); }
-        // Isolated or corner: draw a small block
-        if (!top && !bottom && !left && !right) {
-          ctx.rect(x+4, y+4, CELL-8, CELL-8);
-        }
-        // Dead ends: add cap
-        if (top && !bottom && !left && !right) { ctx.moveTo(x+4, cy); ctx.lineTo(x+CELL-4, cy); }
-        if (bottom && !top && !left && !right) { ctx.moveTo(x+4, cy); ctx.lineTo(x+CELL-4, cy); }
-        if (left && !right && !top && !bottom) { ctx.moveTo(cx, y+4); ctx.lineTo(cx, y+CELL-4); }
-        if (right && !left && !top && !bottom) { ctx.moveTo(cx, y+4); ctx.lineTo(cx, y+CELL-4); }
+        if (t) { ctx.moveTo(cx,y); ctx.lineTo(cx,cy); }
+        if (b) { ctx.moveTo(cx,cy); ctx.lineTo(cx,y+CELL); }
+        if (l) { ctx.moveTo(x,cy); ctx.lineTo(cx,cy); }
+        if (ri){ ctx.moveTo(cx,cy); ctx.lineTo(x+CELL,cy); }
+        if (!t&&!b&&!l&&!ri) ctx.rect(x+4,y+4,CELL-8,CELL-8);
+        if (t&&!b&&!l&&!ri) { ctx.moveTo(x+4,cy); ctx.lineTo(x+CELL-4,cy); }
+        if (b&&!t&&!l&&!ri) { ctx.moveTo(x+4,cy); ctx.lineTo(x+CELL-4,cy); }
+        if (l&&!ri&&!t&&!b) { ctx.moveTo(cx,y+4); ctx.lineTo(cx,y+CELL-4); }
+        if (ri&&!l&&!t&&!b) { ctx.moveTo(cx,y+4); ctx.lineTo(cx,y+CELL-4); }
         ctx.stroke();
-      } else if (ch === ".") {
-        ctx.fillStyle = "#0ff";
-        ctx.beginPath();
-        ctx.arc(x + CELL/2, y + CELL/2, 2, 0, Math.PI*2);
-        ctx.fill();
-      } else if (ch === "o") {
-        ctx.fillStyle = (Math.floor(flashTimer/5) % 2 === 0) ? "#fff" : "#0ff";
-        ctx.beginPath();
-        ctx.arc(x + CELL/2, y + CELL/2, 5, 0, Math.PI*2);
-        ctx.fill();
+      } else if (ch === '.') {
+        ctx.fillStyle = '#0ff';
+        ctx.beginPath(); ctx.arc(x+CELL/2, y+CELL/2, 2, 0, Math.PI*2); ctx.fill();
+      } else if (ch === 'o') {
+        ctx.fillStyle = (Math.floor(flashTimer/5)%2===0) ? '#fff' : '#0ff';
+        ctx.beginPath(); ctx.arc(x+CELL/2, y+CELL/2, 5, 0, Math.PI*2); ctx.fill();
       }
     }
   }
 
-  // Draw ghosts
+  // Ghosts (pixel positions)
   for (const g of ghosts) {
-    const x = g.col * CELL, y = g.row * CELL;
+    const gx = g.x - CELL/2, gy = g.y - CELL/2;
     if (g.eaten) {
-      // eyes only
-      ctx.fillStyle = "#fff";
-      ctx.beginPath(); ctx.arc(x+CELL/3, y+CELL/2-2, 3, 0, Math.PI*2); ctx.fill();
-      ctx.beginPath(); ctx.arc(x+CELL*2/3, y+CELL/2-2, 3, 0, Math.PI*2); ctx.fill();
-      ctx.fillStyle = "#00f";
-      ctx.beginPath(); ctx.arc(x+CELL/3, y+CELL/2-2, 1.5, 0, Math.PI*2); ctx.fill();
-      ctx.beginPath(); ctx.arc(x+CELL*2/3, y+CELL/2-2, 1.5, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle='#fff';
+      ctx.beginPath(); ctx.arc(gx+CELL/3,gy+CELL/2-2,3,0,Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(gx+CELL*2/3,gy+CELL/2-2,3,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle='#00f';
+      ctx.beginPath(); ctx.arc(gx+CELL/3,gy+CELL/2-2,1.5,0,Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(gx+CELL*2/3,gy+CELL/2-2,1.5,0,Math.PI*2); ctx.fill();
     } else {
-      if (g.frightened) {
-        ctx.fillStyle = (g.frightenedTimer < 15 && Math.floor(g.frightenedTimer/2)%2) ? "#fff" : "#22c";
-      } else {
-        ctx.fillStyle = GHOST_COLORS[g.idx % 4];
-      }
-      // Ghost body
+      ctx.fillStyle = g.frightened
+        ? ((g.frightenedTimer<2&&Math.floor(g.frightenedTimer*4)%2) ? '#fff' : '#22c')
+        : GHOST_COLORS[g.idx%4];
       ctx.beginPath();
-      ctx.arc(x+CELL/2, y+CELL/2-2, CELL/2-2, Math.PI, 0);
-      ctx.lineTo(x+CELL-2, y+CELL-2);
-      // wavy bottom
-      const w = (CELL-4)/3;
-      ctx.lineTo(x+CELL-2-w/2, y+CELL-5);
-      ctx.lineTo(x+CELL-2-w, y+CELL-2);
-      ctx.lineTo(x+CELL-2-w*1.5, y+CELL-5);
-      ctx.lineTo(x+CELL-2-w*2, y+CELL-2);
-      ctx.lineTo(x+CELL-2-w*2.5, y+CELL-5);
-      ctx.lineTo(x+2, y+CELL-2);
-      ctx.closePath();
-      ctx.fill();
-      // eyes
-      ctx.fillStyle = "#fff";
-      ctx.beginPath(); ctx.arc(x+CELL/3, y+CELL/2-2, 3, 0, Math.PI*2); ctx.fill();
-      ctx.beginPath(); ctx.arc(x+CELL*2/3, y+CELL/2-2, 3, 0, Math.PI*2); ctx.fill();
+      ctx.arc(gx+CELL/2,gy+CELL/2-2,CELL/2-2,Math.PI,0);
+      ctx.lineTo(gx+CELL-2,gy+CELL-2);
+      const w=(CELL-4)/3;
+      ctx.lineTo(gx+CELL-2-w/2,gy+CELL-5);
+      ctx.lineTo(gx+CELL-2-w,gy+CELL-2);
+      ctx.lineTo(gx+CELL-2-w*1.5,gy+CELL-5);
+      ctx.lineTo(gx+CELL-2-w*2,gy+CELL-2);
+      ctx.lineTo(gx+CELL-2-w*2.5,gy+CELL-5);
+      ctx.lineTo(gx+2,gy+CELL-2);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle='#fff';
+      ctx.beginPath(); ctx.arc(gx+CELL/3,gy+CELL/2-2,3,0,Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(gx+CELL*2/3,gy+CELL/2-2,3,0,Math.PI*2); ctx.fill();
       if (!g.frightened) {
-        ctx.fillStyle = "#00f";
-        ctx.beginPath(); ctx.arc(x+CELL/3, y+CELL/2-2, 1.5, 0, Math.PI*2); ctx.fill();
-        ctx.beginPath(); ctx.arc(x+CELL*2/3, y+CELL/2-2, 1.5, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle='#00f';
+        let edx=0,edy=0;
+        if(g.dir===LEFT)edx=-1.2; else if(g.dir===RIGHT)edx=1.2;
+        if(g.dir===UP)edy=-1.2; else if(g.dir===DOWN)edy=1.2;
+        ctx.beginPath(); ctx.arc(gx+CELL/3+edx,gy+CELL/2-2+edy,1.5,0,Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(gx+CELL*2/3+edx,gy+CELL/2-2+edy,1.5,0,Math.PI*2); ctx.fill();
       }
     }
   }
 
-  // Draw pacman
+  // Pacman (pixel position)
   {
-    const x = pacCol * CELL + CELL/2, y = pacRow * CELL + CELL/2;
     const r = CELL/2 - 2;
-    let startAngle = 0, endAngle = Math.PI * 2;
-    const mouthAngle = pacMouthOpen ? 0.25 * Math.PI : 0.02 * Math.PI;
-    if (pacDir === RIGHT)     { startAngle = mouthAngle;            endAngle = Math.PI*2 - mouthAngle; }
-    else if (pacDir === LEFT) { startAngle = Math.PI + mouthAngle;  endAngle = Math.PI   - mouthAngle; }
-    else if (pacDir === UP)   { startAngle = Math.PI*1.5 + mouthAngle; endAngle = Math.PI*1.5 - mouthAngle; }
-    else if (pacDir === DOWN) { startAngle = Math.PI*0.5 + mouthAngle; endAngle = Math.PI*0.5 - mouthAngle; }
-    ctx.fillStyle = "#ff0";
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-    ctx.arc(x, y, r, startAngle, endAngle);
-    ctx.closePath();
-    ctx.fill();
+    const mouth = (Math.sin(pac.mouthPhase)*0.5+0.5) * 0.3 * Math.PI;
+    let sa=0, ea=Math.PI*2;
+    if (pac.dir===RIGHT)     { sa=mouth; ea=Math.PI*2-mouth; }
+    else if(pac.dir===LEFT)  { sa=Math.PI+mouth; ea=Math.PI-mouth; }
+    else if(pac.dir===UP)    { sa=Math.PI*1.5+mouth; ea=Math.PI*1.5-mouth; }
+    else if(pac.dir===DOWN)  { sa=Math.PI*0.5+mouth; ea=Math.PI*0.5-mouth; }
+    ctx.fillStyle='#ff0';
+    ctx.beginPath(); ctx.moveTo(pac.x,pac.y);
+    ctx.arc(pac.x,pac.y,r,sa,ea); ctx.closePath(); ctx.fill();
+  }
+
+  // Level indicator
+  if (level > 1) {
+    ctx.fillStyle='rgba(255,255,0,0.4)';
+    ctx.font="bold 10px 'Courier New'"; ctx.textAlign='right';
+    ctx.fillText('LV'+level, canvas.width-4, 12); ctx.textAlign='start';
   }
 }
 
 // ─── Overlays ─────────────────────────────────────────────────
-const overlay = document.getElementById("overlay");
-const startBtn = document.getElementById("start-btn");
-
+const overlay = document.getElementById('overlay');
+const startBtn = document.getElementById('start-btn');
 function showOverlay(title, subtitle, btnText) {
-  overlay.classList.remove("hidden");
-  overlay.querySelector("h1").textContent = title;
-  overlay.querySelector(".subtitle").textContent = subtitle;
+  overlay.classList.remove('hidden');
+  overlay.querySelector('h1').textContent = title;
+  overlay.querySelector('.subtitle').textContent = subtitle;
   startBtn.textContent = btnText;
 }
-function hideOverlay() { overlay.classList.add("hidden"); }
-
+function hideOverlay() { overlay.classList.add('hidden'); }
 function showGameOver() {
-  if (won) showOverlay("YOU WIN!", "Score: " + score, "PLAY AGAIN");
-  else     showOverlay("GAME OVER", "Score: " + score, "TRY AGAIN");
+  if (won) { showOverlay('LEVEL '+level+' CLEAR!', 'Score: '+score, 'NEXT LEVEL'); }
+  else { showOverlay('GAME OVER', 'Score: '+score, 'TRY AGAIN'); stopBGM(); }
 }
 
 // ─── Input ────────────────────────────────────────────────────
-function handleDir(d) { nextDir = d; }
+function handleDir(d) { if (pac) pac.nextDir = d; }
 
-document.addEventListener("keydown", e => {
-  if (gameOver || won) {
-    if (e.key === "r" || e.key === "R") { fullReset(); hideOverlay(); return; }
+document.addEventListener('keydown', e => {
+  if (gameOver) {
+    if (e.key==='r'||e.key==='R') { fullReset(); hideOverlay(); running=true; sndStart(); lastTime=0; requestAnimationFrame(gameLoop); }
+    return;
+  }
+  if (won) {
+    if (e.key==='r'||e.key==='R'||e.key==='Enter') { nextLevel(); hideOverlay(); won=false; }
     return;
   }
   switch(e.key) {
-    case "ArrowUp":    case "w": case "W": e.preventDefault(); handleDir(UP);    break;
-    case "ArrowDown":  case "s": case "S": e.preventDefault(); handleDir(DOWN);  break;
-    case "ArrowLeft":  case "a": case "A": e.preventDefault(); handleDir(LEFT);  break;
-    case "ArrowRight": case "d": case "D": e.preventDefault(); handleDir(RIGHT); break;
-    case "p": case "P": paused = !paused; break;
-    case "q": case "Q": showOverlay("PACMAN", "◉ < · · · ♠ ♣ ♦ ♥", "START"); running = false; break;
-    case "1": case "2": case "3": case "4": case "5":
-    case "6": case "7": case "8": case "9":
-      setSpeed(parseInt(e.key)); break;
+    case 'ArrowUp': case 'w': case 'W': e.preventDefault(); handleDir(UP); break;
+    case 'ArrowDown': case 's': case 'S': e.preventDefault(); handleDir(DOWN); break;
+    case 'ArrowLeft': case 'a': case 'A': e.preventDefault(); handleDir(LEFT); break;
+    case 'ArrowRight': case 'd': case 'D': e.preventDefault(); handleDir(RIGHT); break;
+    case 'p': case 'P': paused=!paused; break;
+    case 'q': case 'Q': showOverlay('PACMAN','◉ < · · · ♠ ♣ ♦ ♥','START'); running=false; stopBGM(); break;
+    case '1':case '2':case '3':case '4':case '5':
+    case '6':case '7':case '8':case '9': setSpeed(parseInt(e.key)); break;
   }
 });
 
-// D-pad for mobile
-document.querySelectorAll("#dpad button").forEach(btn => {
-  const map = { up: UP, down: DOWN, left: LEFT, right: RIGHT };
-  btn.addEventListener("touchstart", e => { e.preventDefault(); handleDir(map[btn.dataset.dir]); });
-  btn.addEventListener("mousedown",  e => { e.preventDefault(); handleDir(map[btn.dataset.dir]); });
+document.querySelectorAll('#dpad button').forEach(btn => {
+  const map = {up:UP,down:DOWN,left:LEFT,right:RIGHT};
+  btn.addEventListener('touchstart', e => { e.preventDefault(); handleDir(map[btn.dataset.dir]); });
+  btn.addEventListener('mousedown', e => { e.preventDefault(); handleDir(map[btn.dataset.dir]); });
 });
+document.getElementById('mob-pause').addEventListener('click', () => paused=!paused);
+document.getElementById('mob-pause').addEventListener('touchend', e => { e.preventDefault(); paused=!paused; });
+document.getElementById('mob-quit').addEventListener('click', () => { showOverlay('PACMAN','◉ < · · · ♠ ♣ ♦ ♥','START'); running=false; stopBGM(); });
+document.getElementById('mob-quit').addEventListener('touchend', e => { e.preventDefault(); showOverlay('PACMAN','◉ < · · · ♠ ♣ ♦ ♥','START'); running=false; stopBGM(); });
 
-// Mobile pause/quit buttons
-document.getElementById('mob-pause').addEventListener('click', () => { paused = !paused; });
-document.getElementById('mob-pause').addEventListener('touchend', e => { e.preventDefault(); paused = !paused; });
-document.getElementById('mob-quit').addEventListener('click', () => {
-  showOverlay("PACMAN", "◉ < · · · ♠ ♣ ♦ ♥", "START"); running = false;
-});
-document.getElementById('mob-quit').addEventListener('touchend', e => {
-  e.preventDefault();
-  showOverlay("PACMAN", "◉ < · · · ♠ ♣ ♦ ♥", "START"); running = false;
-});
-
-// Swipe on canvas for mobile
-let _touchX = 0, _touchY = 0;
-canvas.addEventListener('touchstart', e => {
-  e.preventDefault();
-  _touchX = e.touches[0].clientX;
-  _touchY = e.touches[0].clientY;
-}, { passive: false });
-canvas.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
+let _tx=0,_ty=0;
+canvas.addEventListener('touchstart', e => { e.preventDefault(); _tx=e.touches[0].clientX; _ty=e.touches[0].clientY; }, {passive:false});
+canvas.addEventListener('touchmove', e => e.preventDefault(), {passive:false});
 canvas.addEventListener('touchend', e => {
   e.preventDefault();
-  const dx = e.changedTouches[0].clientX - _touchX;
-  const dy = e.changedTouches[0].clientY - _touchY;
-  if (Math.max(Math.abs(dx), Math.abs(dy)) < 15) return;
-  if (Math.abs(dx) > Math.abs(dy)) handleDir(dx > 0 ? RIGHT : LEFT);
-  else handleDir(dy > 0 ? DOWN : UP);
-}, { passive: false });
+  const dx=e.changedTouches[0].clientX-_tx, dy=e.changedTouches[0].clientY-_ty;
+  if (Math.max(Math.abs(dx),Math.abs(dy))<15) return;
+  if (Math.abs(dx)>Math.abs(dy)) handleDir(dx>0?RIGHT:LEFT);
+  else handleDir(dy>0?DOWN:UP);
+}, {passive:false});
 
 document.querySelectorAll('#speed-bar button').forEach(btn => {
   btn.addEventListener('click', () => setSpeed(parseInt(btn.dataset.speed)));
 });
 
-startBtn.addEventListener("click", () => {
-  fullReset();
-  hideOverlay();
-  running = true;
-  requestAnimationFrame(gameLoop);
-});
-startBtn.addEventListener("touchend", e => {
-  e.preventDefault();
-  fullReset();
-  hideOverlay();
-  running = true;
-  requestAnimationFrame(gameLoop);
+// Volume slider
+document.getElementById('vol-slider').addEventListener('input', function() {
+  setVolume(this.value / 100);
 });
 
-// ─── Game Loop ────────────────────────────────────────────────
+function startGame() {
+  // Init audio on user gesture — this is the key to making sound work
+  initAudio();
+  if (won) { nextLevel(); hideOverlay(); won=false;
+    if (!running) { running=true; lastTime=0; requestAnimationFrame(gameLoop); }
+  } else {
+    fullReset(); hideOverlay(); running=true; lastTime=0;
+    // Small delay to ensure AudioContext is running before first sound
+    setTimeout(() => { sndStart(); startBGM(); }, 100);
+    requestAnimationFrame(gameLoop);
+  }
+}
+startBtn.addEventListener('click', startGame);
+startBtn.addEventListener('touchend', e => { e.preventDefault(); startGame(); });
+
+// ─── Game Loop — true 60fps ───────────────────────────────────
 let lastTime = 0;
-const TICK_MS = 100; // ~10 fps logic
 
 function gameLoop(timestamp) {
   if (!running) return;
 
-  if (gameOver || won) { showGameOver(); draw(); updateHUD(); return; }
+  if (!lastTime) lastTime = timestamp;
+  const rawDt = (timestamp - lastTime) / 1000;
+  lastTime = timestamp;
+  const dt = Math.min(rawDt, 0.05); // clamp after tab switch
 
-  if (timestamp - lastTime >= SPEED_TICKS[speedLevel - 1]) {
-    lastTime = timestamp;
-    if (!paused) {
-      movePacman();
-      tick++;
-      if (tick % 2 === 0) moveGhosts();
-      checkCollisions();
-    }
+  if (gameOver || won) { showGameOver(); draw(); updateHUD(dt); return; }
+
+  if (!paused) {
+    updatePacman(dt);
+    updateGhosts(dt);
+    checkCollisions();
   }
 
   draw();
-  updateHUD();
+  updateHUD(dt);
 
   if (paused) {
-    ctx.fillStyle = "rgba(0,0,0,0.6)";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = "#ff0";
-    ctx.font = "bold 28px 'Courier New'";
-    ctx.textAlign = "center";
-    ctx.fillText("PAUSED", canvas.width/2, canvas.height/2);
-    ctx.font = "16px 'Courier New'";
-    ctx.fillText("Press P to resume", canvas.width/2, canvas.height/2 + 30);
+    ctx.fillStyle='rgba(0,0,0,0.6)';
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle='#ff0'; ctx.font="bold 28px 'Courier New'"; ctx.textAlign='center';
+    ctx.fillText('PAUSED',canvas.width/2,canvas.height/2);
+    ctx.font="16px 'Courier New'";
+    ctx.fillText('Press P to resume',canvas.width/2,canvas.height/2+30);
+    ctx.textAlign='start';
   }
 
   requestAnimationFrame(gameLoop);
