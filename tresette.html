@@ -55,15 +55,15 @@ body{overflow:hidden;font-family:'Segoe UI',Arial,sans-serif;user-select:none;ba
 .card-inner{position:relative;width:100%;height:100%;pointer-events:none}
 
 /* ════════ Player Areas ════════ */
-#player-hand{position:fixed;bottom:10px;left:50%;transform:translateX(-50%);height:120px;display:flex;align-items:flex-end;z-index:10}
-#north-hand{position:fixed;top:10px;left:50%;transform:translateX(-50%);height:60px;z-index:5}
-#west-hand{position:fixed;left:10px;top:50%;transform:translateY(-50%);width:60px;z-index:5}
-#east-hand{position:fixed;right:10px;top:50%;transform:translateY(-50%);width:60px;z-index:5}
+#player-hand{position:fixed;bottom:clamp(2px, 1vh, 10px);left:50%;transform:translateX(-50%);height:clamp(68px, 18vw, 120px);display:flex;align-items:flex-end;z-index:10}
+#north-hand{position:fixed;top:clamp(4px, 1vh, 10px);left:50%;transform:translateX(-50%);height:clamp(36px, 9vw, 60px);z-index:5}
+#west-hand{position:fixed;left:clamp(2px, 0.5vw, 10px);top:50%;transform:translateY(-50%);width:clamp(36px, 9vw, 60px);z-index:5}
+#east-hand{position:fixed;right:clamp(2px, 0.5vw, 10px);top:50%;transform:translateY(-50%);width:clamp(36px, 9vw, 60px);z-index:5}
 
 /* ════════ Trick Area ════════ */
 #trick-area{
   position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
-  width:200px;height:200px;z-index:8;
+  width:clamp(100px, 30vw, 200px);height:clamp(100px, 30vw, 200px);z-index:8;
 }
 .trick-card{position:absolute}
 .trick-card.pos-south{bottom:0;left:50%;transform:translateX(-50%)}
@@ -73,26 +73,26 @@ body{overflow:hidden;font-family:'Segoe UI',Arial,sans-serif;user-select:none;ba
 
 /* ════════ Player Labels ════════ */
 .player-label{
-  position:fixed;color:#ddd;font-size:12px;font-weight:700;
+  position:fixed;color:#ddd;font-size:clamp(9px, 2.2vw, 12px);font-weight:700;
   text-shadow:1px 1px 3px rgba(0,0,0,0.7);z-index:6;
-  background:rgba(0,0,0,0.3);padding:3px 10px;border-radius:10px;
-  letter-spacing:1px;
+  background:rgba(0,0,0,0.3);padding:clamp(2px, 0.5vh, 3px) clamp(4px, 1.5vw, 10px);border-radius:10px;
+  letter-spacing:1px;white-space:nowrap;
 }
-.player-label.south{bottom:135px;left:50%;transform:translateX(-50%)}
-.player-label.north{top:75px;left:50%;transform:translateX(-50%)}
-.player-label.west{left:75px;top:50%;transform:translateY(-50%)}
-.player-label.east{right:75px;top:50%;transform:translateY(-50%)}
-.player-label .lb-pts{color:#fa4;font-size:10px;margin-left:6px}
+.player-label.south{bottom:clamp(68px, 18vw, 135px);left:50%;transform:translateX(-50%)}
+.player-label.north{top:clamp(40px, 11vw, 75px);left:50%;transform:translateX(-50%)}
+.player-label.west{left:clamp(36px, 9vw, 75px);top:50%;transform:translateY(-50%)}
+.player-label.east{right:clamp(36px, 9vw, 75px);top:50%;transform:translateY(-50%)}
+.player-label .lb-pts{color:#fa4;font-size:clamp(8px, 1.8vw, 10px);margin-left:4px}
 .player-label.active-turn{border:1px solid #fa4;background:rgba(255,150,0,0.15)}
 
 /* ════════ Score Panel ════════ */
 #score-panel{
-  position:fixed;top:10px;right:10px;width:180px;z-index:20;
+  position:fixed;top:clamp(4px, 1vh, 10px);right:clamp(4px, 1vw, 10px);width:clamp(95px, 25vw, 180px);z-index:20;
   background:rgba(0,0,0,0.6);border:1px solid rgba(255,255,255,0.1);
-  border-radius:8px;padding:12px;color:#ddd;
+  border-radius:clamp(4px, 1vw, 8px);padding:clamp(4px, 1.5vw, 12px);color:#ddd;
 }
-#score-panel h3{font-size:13px;color:#fa4;margin-bottom:8px;text-align:center;letter-spacing:2px}
-.score-row{display:flex;justify-content:space-between;font-size:12px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.05)}
+#score-panel h3{font-size:clamp(9px, 2.2vw, 13px);color:#fa4;margin-bottom:clamp(3px, 1vw, 8px);text-align:center;letter-spacing:clamp(1px, 0.4vw, 2px)}
+.score-row{display:flex;justify-content:space-between;font-size:clamp(9px, 2vw, 12px);padding:clamp(1px, 0.5vh, 3px) 0;border-bottom:1px solid rgba(255,255,255,0.05)}
 .score-row:last-child{border:none}
 .score-row .sr-name{color:#ccc}
 .score-row .sr-pts{color:#fff;font-weight:bold}
@@ -103,26 +103,28 @@ body{overflow:hidden;font-family:'Segoe UI',Arial,sans-serif;user-select:none;ba
 /* ════════ Info / Status ════════ */
 #status-msg{
   position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
-  z-index:25;color:#fff;font-size:18px;font-weight:bold;
+  z-index:25;color:#fff;font-size:clamp(13px, 3vw, 18px);font-weight:bold;
   text-shadow:0 0 15px rgba(0,0,0,0.8);
   pointer-events:none;opacity:0;transition:opacity .3s;
-  background:rgba(0,0,0,0.5);padding:10px 30px;border-radius:8px;
+  background:rgba(0,0,0,0.5);padding:clamp(6px, 1.5vh, 10px) clamp(14px, 4vw, 30px);border-radius:8px;
+  max-width:90vw;text-align:center;
 }
 #status-msg.show{opacity:1}
 
 /* ════════ Last Trick Popup ════════ */
 #last-trick{
-  position:fixed;bottom:140px;right:10px;z-index:15;
-  background:rgba(0,0,0,0.5);border-radius:6px;padding:6px 8px;
+  position:fixed;bottom:clamp(68px, 18vw, 140px);right:clamp(4px, 1vw, 10px);z-index:15;
+  background:rgba(0,0,0,0.5);border-radius:6px;padding:clamp(3px, 1vw, 6px) clamp(4px, 1.5vw, 8px);
   cursor:pointer;display:none;
 }
-#last-trick .lt-label{font-size:9px;color:#aaa;text-align:center;margin-bottom:4px}
+#last-trick .lt-label{font-size:clamp(7px, 1.8vw, 9px);color:#aaa;text-align:center;margin-bottom:4px}
 
 /* ════════ Rules Button ════════ */
 #rules-btn{
-  position:fixed;top:10px;left:10px;z-index:20;
+  position:fixed;top:clamp(4px, 1vh, 10px);left:clamp(4px, 1vw, 10px);z-index:20;
   background:rgba(0,0,0,0.5);border:1px solid rgba(255,255,255,0.15);
-  color:#ddd;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:12px;
+  color:#ddd;padding:clamp(4px, 1vw, 6px) clamp(8px, 2vw, 14px);border-radius:6px;cursor:pointer;font-size:clamp(10px, 2.2vw, 12px);
+  touch-action:manipulation;min-height:36px;
 }
 #rules-btn:hover{background:rgba(0,0,0,0.7)}
 
@@ -150,22 +152,27 @@ body{overflow:hidden;font-family:'Segoe UI',Arial,sans-serif;user-select:none;ba
 #overlay{
   position:fixed;inset:0;z-index:40;
   background:radial-gradient(ellipse at center,#1a3a1a 0%,#0a1a0a 100%);
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  display:flex;flex-direction:column;align-items:center;
+  justify-content:flex-start;
   color:#fff;
+  overflow-y:auto;-webkit-overflow-scrolling:touch;
+  padding:env(safe-area-inset-top, 12px) 12px env(safe-area-inset-bottom, 12px);
 }
+#overlay::before{content:'';flex:1 0 0px}
+#overlay::after{content:'';flex:1 0 0px}
 #overlay.hidden{display:none}
 #overlay h1{
-  font-size:42px;font-weight:900;letter-spacing:4px;
+  font-size:clamp(22px, 6vw, 42px);font-weight:900;letter-spacing:clamp(1px, 0.5vw, 4px);
   color:#fa4;text-shadow:0 2px 20px rgba(255,150,0,0.3);
-  margin-bottom:4px;
+  margin-bottom:4px;flex-shrink:0;
 }
-#overlay .sub{color:#888;font-size:13px;letter-spacing:3px;margin-bottom:8px}
-#overlay .sub2{color:#aa8;font-size:11px;margin-bottom:24px;font-style:italic}
+#overlay .sub{color:#888;font-size:clamp(10px, 2.5vw, 13px);letter-spacing:clamp(1px, 0.5vw, 3px);margin-bottom:clamp(4px, 1vh, 8px);flex-shrink:0}
+#overlay .sub2{color:#aa8;font-size:clamp(9px, 2vw, 11px);margin-bottom:clamp(8px, 2vh, 24px);font-style:italic;flex-shrink:0}
 
 /* Card preview row */
-.preview-row{display:flex;gap:8px;margin-bottom:24px;flex-wrap:wrap;justify-content:center}
+.preview-row{display:flex;gap:clamp(3px, 1vw, 8px);margin-bottom:clamp(8px, 2vh, 24px);flex-wrap:wrap;justify-content:center;flex-shrink:0}
 .preview-card{
-  width:50px;height:76px;border-radius:5px;
+  width:clamp(28px, 8vw, 50px);height:clamp(42px, 12vw, 76px);border-radius:clamp(3px, 0.8vw, 5px);
   overflow:hidden;
   box-shadow:1px 2px 6px rgba(0,0,0,0.4);
 }
@@ -175,28 +182,31 @@ body{overflow:hidden;font-family:'Segoe UI',Arial,sans-serif;user-select:none;ba
 }
 
 .info-box{
-  text-align:left;line-height:2;font-size:13px;color:#bbb;
-  background:rgba(255,255,255,0.04);padding:16px 24px;border-radius:8px;
-  margin-bottom:20px;max-width:480px;
+  text-align:left;line-height:1.8;font-size:clamp(10px, 2.5vw, 13px);color:#bbb;
+  background:rgba(255,255,255,0.04);padding:clamp(8px, 2vw, 16px) clamp(10px, 3vw, 24px);border-radius:8px;
+  margin-bottom:clamp(10px, 2vh, 20px);max-width:min(480px, 95vw);flex-shrink:0;width:100%;
 }
 .info-box b{color:#fa4}
 
 #play-btn{
-  font-size:20px;padding:14px 70px;
+  font-size:clamp(14px, 3.5vw, 20px);padding:clamp(10px, 2vh, 14px) clamp(30px, 10vw, 70px);
   background:linear-gradient(135deg,#2a7a2a,#3a9a3a);
   color:#fff;border:none;border-radius:8px;cursor:pointer;
-  font-weight:bold;letter-spacing:3px;
+  font-weight:bold;letter-spacing:clamp(1px, 0.5vw, 3px);
   box-shadow:0 4px 20px rgba(50,150,50,0.35);
+  touch-action:manipulation;-webkit-tap-highlight-color:rgba(0,0,0,0.1);
+  min-height:48px;flex-shrink:0;margin-bottom:12px;
 }
 #play-btn:hover{filter:brightness(1.15);transform:scale(1.03)}
+#play-btn:active{filter:brightness(1.15);transform:scale(0.97)}
 
 /* ════════ Mode Selector ════════ */
-.mode-selector{display:flex;gap:12px;margin-bottom:20px}
+.mode-selector{display:flex;gap:clamp(6px, 2vw, 12px);margin-bottom:clamp(10px, 2vh, 20px);flex-shrink:0;flex-wrap:wrap;justify-content:center}
 .mode-btn{
-  padding:12px 28px;font-size:15px;font-weight:bold;letter-spacing:1px;
+  padding:clamp(8px, 1.5vh, 12px) clamp(14px, 4vw, 28px);font-size:clamp(12px, 2.8vw, 15px);font-weight:bold;letter-spacing:1px;
   border:2px solid rgba(255,255,255,0.2);border-radius:8px;
   cursor:pointer;color:#ccc;background:rgba(255,255,255,0.06);
-  transition:all .2s;
+  transition:all .2s;touch-action:manipulation;min-height:44px;
 }
 .mode-btn:hover{background:rgba(255,255,255,0.12);color:#fff}
 .mode-btn.selected{
@@ -207,38 +217,46 @@ body{overflow:hidden;font-family:'Segoe UI',Arial,sans-serif;user-select:none;ba
 /* ════════ Game Over ════════ */
 #game-over{
   position:fixed;inset:0;z-index:35;display:none;
-  align-items:center;justify-content:center;
+  align-items:center;justify-content:flex-start;flex-direction:column;
+  overflow-y:auto;-webkit-overflow-scrolling:touch;
+  padding:env(safe-area-inset-top, 12px) 12px env(safe-area-inset-bottom, 12px);
 }
+#game-over::before{content:'';flex:1 0 0px}
+#game-over::after{content:'';flex:1 0 0px}
 #game-over.show{display:flex}
 .go-bg{position:absolute;inset:0;background:rgba(0,0,0,0.75)}
 .go-content{
   z-index:1;text-align:center;background:rgba(20,40,20,0.95);
-  padding:30px 40px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);
+  padding:clamp(16px, 3vh, 30px) clamp(16px, 4vw, 40px);border-radius:12px;border:1px solid rgba(255,255,255,0.1);
+  max-width:min(400px, 92vw);
 }
-.go-content h2{font-size:36px;margin-bottom:12px;color:#fa4}
-.go-results{text-align:left;margin:0 auto;display:inline-block}
+.go-content h2{font-size:clamp(20px, 5vw, 36px);margin-bottom:clamp(6px, 1.5vh, 12px);color:#fa4}
+.go-results{text-align:left;margin:0 auto;display:inline-block;width:100%}
 .go-result-row{
-  display:flex;gap:16px;font-size:15px;padding:6px 0;
+  display:flex;gap:clamp(6px, 2vw, 16px);font-size:clamp(11px, 2.8vw, 15px);padding:clamp(3px, 0.8vh, 6px) 0;
   border-bottom:1px solid rgba(255,255,255,0.05);color:#ddd;
 }
-.go-result-row .grr-name{width:90px}
-.go-result-row .grr-pts{width:60px;text-align:right;font-weight:bold}
-.go-result-row .grr-status{width:80px;text-align:right;font-size:12px}
+.go-result-row .grr-name{flex:1;min-width:0}
+.go-result-row .grr-pts{width:clamp(40px, 10vw, 60px);text-align:right;font-weight:bold}
+.go-result-row .grr-status{width:clamp(50px, 14vw, 80px);text-align:right;font-size:clamp(9px, 2.2vw, 12px)}
 .go-result-row.loser .grr-pts{color:#f44}
 .go-result-row.loser .grr-status{color:#f44}
 .go-result-row.winner .grr-pts{color:#4f4}
 .go-result-row.winner .grr-status{color:#4f4}
 #retry-btn{
-  margin-top:20px;font-size:16px;padding:10px 40px;
+  margin-top:clamp(10px, 2vh, 20px);font-size:clamp(13px, 3vw, 16px);padding:clamp(8px, 1.5vh, 10px) clamp(20px, 6vw, 40px);
   background:linear-gradient(135deg,#2a7a2a,#3a9a3a);
   color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:bold;
+  touch-action:manipulation;-webkit-tap-highlight-color:rgba(0,0,0,0.1);
+  min-height:44px;
 }
+#retry-btn:active{filter:brightness(1.15);transform:scale(0.97)}
 
 /* ════════ Trick count ════════ */
 #trick-count{
-  position:fixed;top:10px;left:50%;transform:translateX(-50%);
-  z-index:20;color:#ddd;font-size:13px;
-  background:rgba(0,0,0,0.4);padding:4px 16px;border-radius:6px;
+  position:fixed;top:clamp(4px, 1vh, 10px);left:50%;transform:translateX(-50%);
+  z-index:20;color:#ddd;font-size:clamp(10px, 2.2vw, 13px);
+  background:rgba(0,0,0,0.4);padding:clamp(2px, 0.5vh, 4px) clamp(8px, 2vw, 16px);border-radius:6px;
   text-shadow:1px 1px 2px #000;
 }
 
@@ -246,129 +264,30 @@ body{overflow:hidden;font-family:'Segoe UI',Arial,sans-serif;user-select:none;ba
    MOBILE RESPONSIVE
    ════════════════════════════════════════════════════════════════ */
 
-/* ─── Tablet (<768px) ────────────────────────────── */
-@media (max-width: 768px) {
-  .card{width:58px;height:90px;border-radius:5px}
-
-
-  #trick-area{width:170px;height:170px}
-  .trick-card .card{width:54px!important;height:84px!important}
-
-  #score-panel{width:150px;padding:8px}
-  #score-panel h3{font-size:11px}
-  .score-row{font-size:11px}
-
-  .player-label{font-size:11px;padding:2px 8px}
-  .player-label.south{bottom:110px}
-  .player-label.north{top:65px}
-  .player-label.west{left:65px}
-  .player-label.east{right:65px}
-
-  #player-hand{height:100px;bottom:6px}
-
-  #overlay h1{font-size:32px}
-  .info-box{font-size:12px;padding:12px 16px;max-width:90vw}
-  .preview-card{width:40px;height:60px}
-
-  .go-content{padding:20px 24px}
-  .go-content h2{font-size:28px}
-  .go-result-row{font-size:13px}
-}
-
-/* ─── Mobile (<520px) ─────────────────────────────── */
-@media (max-width: 520px) {
-  .card{width:48px;height:74px;border-radius:4px}
-
-
-  .card.playable:hover{transform:translateY(-10px) scale(1.04)}
-  /* Touch-friendly: active state for playable cards */
+/* Touch-friendly: active state for playable cards on touch devices */
+@media (hover: none) and (pointer: coarse) {
+  .card.playable:hover{transform:none;box-shadow:0 0 10px rgba(255,255,120,0.6),1px 2px 8px rgba(0,0,0,0.4)}
   .card.playable:active{transform:translateY(-10px) scale(1.04);box-shadow:0 0 18px rgba(255,255,120,0.8),2px 4px 12px rgba(0,0,0,0.4);z-index:100!important}
-
-  #trick-area{width:140px;height:140px}
-  .trick-card .card,.trick-card.card{width:46px!important;height:72px!important}
-
-  #player-hand{height:85px;bottom:4px}
-
-  /* Move opponent hands closer on narrow screens */
-  #north-hand{top:6px;height:45px}
-  #west-hand{left:4px;width:45px}
-  #east-hand{right:4px;width:45px}
-
-  /* Score panel becomes compact bottom-left */
-  #score-panel{width:120px;padding:6px 8px;top:auto;bottom:90px;right:auto;left:4px;border-radius:6px}
-  #score-panel h3{font-size:10px;margin-bottom:4px}
-  .score-row{font-size:10px;padding:2px 0}
-
-  /* Labels */
-  .player-label{font-size:10px;padding:2px 6px}
-  .player-label .lb-pts{font-size:9px;margin-left:4px}
-  .player-label.south{bottom:90px}
-  .player-label.north{top:52px}
-  .player-label.west{left:50px;top:calc(50% - 10px)}
-  .player-label.east{right:50px;top:calc(50% - 10px)}
-
-  #trick-count{font-size:11px;padding:3px 10px;top:6px}
-  #rules-btn{padding:5px 10px;font-size:11px;top:6px;left:6px}
-
-  #status-msg{font-size:14px;padding:8px 20px}
-
-  /* Overlay */
-  #overlay{padding:12px}
-  #overlay h1{font-size:28px;letter-spacing:2px}
-  #overlay .sub{font-size:11px;letter-spacing:2px}
-  #overlay .sub2{font-size:10px;margin-bottom:16px}
-  .preview-row{gap:5px;margin-bottom:16px}
-  .preview-card{width:36px;height:54px;border-radius:4px}
-  .info-box{font-size:11px;padding:10px 14px;line-height:1.8;max-width:95vw}
-  #play-btn{font-size:16px;padding:12px 50px}
-
-  /* Game over */
-  .go-content{padding:16px 20px;max-width:90vw}
-  .go-content h2{font-size:24px;margin-bottom:8px}
-  .go-result-row{font-size:12px;gap:8px}
-  .go-result-row .grr-name{width:70px}
-  .go-result-row .grr-pts{width:55px}
-  .go-result-row .grr-status{width:65px;font-size:10px}
-  #retry-btn{font-size:14px;padding:8px 30px}
-
-  /* Rules panel mobile */
-  #rules-panel .rp-content{padding:16px;max-height:85vh}
-  #rules-panel h2{font-size:16px}
-  #rules-panel p{font-size:12px;line-height:1.6;margin-bottom:8px}
 }
 
-/* ─── Very small phones (<380px) ──────────────────── */
-@media (max-width: 380px) {
-  .card{width:42px;height:64px;border-radius:3px}
-
-
-  #trick-area{width:120px;height:120px}
-
-  #player-hand{height:72px;bottom:2px}
-  .player-label.south{bottom:76px}
-
-  #overlay h1{font-size:24px}
-  .info-box{font-size:10px;line-height:1.7}
-  #play-btn{font-size:14px;padding:10px 40px}
-
-  #score-panel{width:105px;padding:4px 6px;bottom:76px}
-  #score-panel h3{font-size:9px}
-  .score-row{font-size:9px}
+/* ─── Mobile (<520px): move score panel to bottom-left ─── */
+@media (max-width: 520px) {
+  #score-panel{top:auto;bottom:clamp(68px, 18vw, 90px);right:auto;left:clamp(2px, 0.5vw, 4px)}
 }
 
 /* ─── Landscape mobile ────────────────────────────── */
-@media (max-height: 500px) {
-  .card{width:44px;height:68px}
-  #player-hand{height:76px;bottom:2px}
-  .player-label.south{bottom:80px}
-  #trick-area{width:130px;height:110px}
-  #score-panel{top:6px;width:130px;padding:6px}
-  #overlay h1{font-size:24px}
-  .info-box{font-size:10px;padding:8px 12px;line-height:1.6;max-height:30vh;overflow-y:auto}
-  .preview-row{margin-bottom:10px}
-  #play-btn{font-size:14px;padding:10px 30px}
-  .go-content{padding:14px 18px}
-  .go-content h2{font-size:22px}
+@media (max-height: 500px) and (orientation: landscape) {
+  .info-box{max-height:30vh;overflow-y:auto}
+  .preview-row{display:none}
+  #overlay .sub2{margin-bottom:8px}
+}
+
+/* ─── Rules panel small screens ─── */
+@media (max-width: 520px), (max-height: 500px) {
+  #rules-panel .rp-content{padding:16px;max-height:85vh;max-height:85dvh;width:95%}
+  #rules-panel h2{font-size:clamp(14px, 3.5vw, 20px)}
+  #rules-panel p{font-size:clamp(11px, 2.5vw, 13px);line-height:1.6;margin-bottom:8px}
+  #rules-panel .rp-close{min-height:44px;touch-action:manipulation}
 }
 </style>
 </head>
@@ -382,9 +301,9 @@ body{overflow:hidden;font-family:'Segoe UI',Arial,sans-serif;user-select:none;ba
   <div id="trick-area"></div>
 
   <div class="player-label south" id="label-south">Tu <span class="lb-pts"></span></div>
-  <div class="player-label north" id="label-north">Raffaele <span class="lb-pts"></span></div>
-  <div class="player-label west"  id="label-west">Domenico <span class="lb-pts"></span></div>
-  <div class="player-label east"  id="label-east">Vincenzo <span class="lb-pts"></span></div>
+  <div class="player-label north" id="label-north">Riccardo <span class="lb-pts"></span></div>
+  <div class="player-label west"  id="label-west">Zio Checco <span class="lb-pts"></span></div>
+  <div class="player-label east"  id="label-east">Giuseppe <span class="lb-pts"></span></div>
 </div>
 
 <div id="trick-count">Mano 0 / 10</div>
@@ -445,7 +364,7 @@ body{overflow:hidden;font-family:'Segoe UI',Arial,sans-serif;user-select:none;ba
     Devi rispondere al seme se puoi!
   </div>
 
-  <button id="play-btn">GIOCA!</button>
+  <button id="play-btn" ontouchstart="">GIOCA!</button>
 </div>
 
 <div id="game-over">
@@ -453,7 +372,7 @@ body{overflow:hidden;font-family:'Segoe UI',Arial,sans-serif;user-select:none;ba
   <div class="go-content">
     <h2 id="go-title"></h2>
     <div class="go-results" id="go-results"></div>
-    <button id="retry-btn">GIOCA ANCORA</button>
+    <button id="retry-btn" ontouchstart="">GIOCA ANCORA</button>
   </div>
 </div>
 
@@ -711,7 +630,7 @@ const RANK_POWER = {4:0, 5:1, 6:2, 7:3, 8:4, 9:5, 10:6, 1:7, 2:8, 3:9};
 // Point values in "terzi" (thirds). 3 terzi = 1 punto.
 const RANK_POINTS = {1:3, 2:1, 3:1, 4:0, 5:0, 6:0, 7:0, 8:1, 9:1, 10:1};
 
-const PLAYER_NAMES = ['Tu','Vincenzo','Raffaele','Domenico'];
+const PLAYER_NAMES = ['Tu','Giuseppe','Riccardo','Zio Checco'];
 const PLAYER_POS = ['south','east','north','west'];
 // Play order: counter-clockwise = S(0) → E(1)→ N(2) → W(3)
 
@@ -953,10 +872,12 @@ function renderAll() {
 
 function getCardSize() {
   const w = innerWidth;
-  if (w <= 380) return { cw: 42, ch: 64 };
-  if (w <= 520) return { cw: 48, ch: 74 };
-  if (w <= 768) return { cw: 58, ch: 90 };
-  return { cw: 68, ch: 105 };
+  const h = innerHeight;
+  const base = Math.min(w, h * 0.8);
+  // Fluid: scales from ~38px at 280px to 68px at 768px+
+  const cw = Math.round(Math.max(38, Math.min(68, base * 0.09)));
+  const ch = Math.round(cw * 1.54);
+  return { cw, ch };
 }
 
 function renderPlayerHand() {
@@ -1003,12 +924,12 @@ function renderPlayerHand() {
 }
 
 function renderOpponentHands() {
-  const isMobile = innerWidth <= 520;
-  const isSmall = innerWidth <= 380;
-  const oppW = isSmall ? 32 : isMobile ? 36 : 45;
-  const oppH = isSmall ? 48 : isMobile ? 54 : 68;
-  const northGap = isSmall ? 18 : isMobile ? 22 : 28;
-  const sideGap = isSmall ? 14 : isMobile ? 16 : 20;
+  const w = innerWidth;
+  const base = Math.min(w, innerHeight * 0.8);
+  const oppW = Math.round(Math.max(28, Math.min(45, base * 0.06)));
+  const oppH = Math.round(oppW * 1.5);
+  const northGap = Math.round(Math.max(14, Math.min(28, base * 0.038)));
+  const sideGap = Math.round(Math.max(10, Math.min(20, base * 0.026)));
 
   // North (player 2)
   const northEl = document.getElementById('north-hand');
@@ -1065,7 +986,7 @@ function renderTrick() {
   const area = document.getElementById('trick-area');
   area.innerHTML = '';
   const { cw, ch } = getCardSize();
-  const trickScale = innerWidth <= 380 ? 0.7 : innerWidth <= 520 ? 0.78 : innerWidth <= 768 ? 0.85 : 1;
+  const trickScale = Math.max(0.7, Math.min(1, innerWidth / 768));
   const tw = Math.round(cw * trickScale);
   const th = Math.round(ch * trickScale);
   game.trick.forEach(({ playerIdx, card }) => {
@@ -1167,7 +1088,8 @@ async function playCard(playerIdx, card) {
     game.scores[winner] += pts;
 
     // Flash trick winner
-    showStatus(`${PLAYER_NAMES[winner]} prende! (+${formatPunti(pts)})`, 1200);
+    const verb = winner === 0 ? 'prendi' : 'prende';
+    showStatus(`${PLAYER_NAMES[winner]} ${verb}! (+${formatPunti(pts)})`, 1200);
 
     // Trick win sound
     sndTrickWon();
@@ -1411,12 +1333,15 @@ function showGameOver() {
   sorted.forEach((p, rank) => {
     const isWinner = p.score === winScore;
     const isLoser = p.score === loseScore;
+    const isPlayer = p.idx === 0;
     const row = document.createElement('div');
     row.className = 'go-result-row' + (isLoser ? ' loser' : '') + (isWinner ? ' winner' : '');
+    const winLabel = isPlayer ? '✅ VINCI' : '✅ VINCE';
+    const loseLabel = isPlayer ? '❌ PERDI' : '❌ PERDE';
     row.innerHTML =
       `<span class="grr-name">${rank + 1}° ${p.name}</span>` +
       `<span class="grr-pts">${formatPuntiLong(p.score)}</span>` +
-      `<span class="grr-status">${isWinner ? '✅ VINCE' : isLoser ? '❌ PERDE' : ''}</span>`;
+      `<span class="grr-status">${isWinner ? winLabel : isLoser ? loseLabel : ''}</span>`;
     resultsEl.appendChild(row);
   });
 }
@@ -1464,7 +1389,7 @@ document.getElementById('rules-btn').onclick = () => {
 
 // Prevent default touch behaviors that interfere with game
 document.addEventListener('touchmove', (e) => {
-  if (!e.target.closest('.rp-content') && !e.target.closest('.info-box')) {
+  if (!e.target.closest('.rp-content') && !e.target.closest('.info-box') && !e.target.closest('#overlay') && !e.target.closest('#game-over')) {
     e.preventDefault();
   }
 }, { passive: false });
@@ -1502,12 +1427,16 @@ function startGame() {
 
 // ─── Window Resize ────────────────────────────────────────────
 let resizeTimeout;
-window.addEventListener('resize', () => {
+function handleResize() {
   clearTimeout(resizeTimeout);
   resizeTimeout = setTimeout(() => {
     if (game) renderAll();
   }, 100);
-});
+}
+window.addEventListener('resize', handleResize);
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', handleResize);
+}
 </script>
 
 </body>
