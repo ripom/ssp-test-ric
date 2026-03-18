@@ -39,6 +39,9 @@
     touch-action: none;
     box-shadow: 0 0 20px rgba(0, 255, 255, 0.4);
     border: 1px solid #0ff;
+    max-width: 100vw;
+    max-height: 80vh;
+    object-fit: contain;
   }
   #message {
     font-size: 16px;
@@ -97,39 +100,62 @@
     letter-spacing: 1px;
   }
   #overlay .start-btn:hover { background: #ffd700; }
-  /* Mobile d-pad */
-  #dpad {
+  /* Mobile joystick */
+  #joystick-zone {
     display: none;
-    margin-top: 16px;
+    width: 140px;
+    height: 140px;
+    background: rgba(255,255,255,0.05);
+    border: 2px solid rgba(0, 255, 255, 0.4);
+    border-radius: 50%;
     position: relative;
-    width: 150px;
-    height: 150px;
+    touch-action: none;
+    margin-top: 16px;
   }
-  #dpad button {
+  #joystick-knob {
+    width: 60px;
+    height: 60px;
+    background: rgba(255, 255, 0, 0.8);
+    border-radius: 50%;
     position: absolute;
-    width: 50px;
-    height: 50px;
-    background: rgba(255,255,255,0.12);
-    border: 1px solid rgba(255,255,255,0.3);
-    border-radius: 8px;
-    color: #fff;
-    font-size: 22px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    box-shadow: 0 0 15px rgba(255,255,0,0.8);
   }
-  #dpad button:active { background: rgba(255,255,0,0.3); }
-  #dpad .up    { top: 0;   left: 50px; }
-  #dpad .down  { top: 100px; left: 50px; }
-  #dpad .left  { top: 50px; left: 0; }
-  #dpad .right { top: 50px; left: 100px; }
-  @media (pointer: coarse) {
-    #dpad { display: block; }
+
+  @media (pointer: coarse), (max-width: 800px) {
+    #joystick-zone { 
+      display: block; 
+      position: fixed;
+      bottom: 30px;
+      left: 20px;
+      z-index: 100;
+      opacity: 0.8;
+    }
+    #mobile-actions { 
+      display: flex !important; 
+      flex-direction: column;
+      position: fixed;
+      bottom: 20px;
+      right: 10px;
+      z-index: 100;
+      opacity: 0.7;
+      gap: 12px;
+    }
+    #mobile-actions button {
+      padding: 15px 20px;
+      font-size: 16px;
+      background: rgba(0, 0, 0, 0.6);
+      border: 2px solid rgba(255, 255, 255, 0.5);
+    }
     #controls { display: none; }
-    #legend .leg-group:last-child { display: none; }
-    #mobile-actions { display: flex !important; }
+    #legend { display: none; }
+    #audio-status { display: none; }
+    #game-canvas { max-height: 85vh; }
   }
+
   @media (max-width: 560px) {
     #header { font-size: 13px; padding: 6px 0; }
     #header span { margin: 0 6px; }
@@ -143,12 +169,8 @@
     #speed-bar button { width: 26px; height: 26px; font-size: 12px; }
     #speed-bar .speed-lbl { font-size: 11px; }
     #message { font-size: 13px; }
-    #dpad { width: 130px; height: 130px; margin-top: 10px; }
-    #dpad button { width: 44px; height: 44px; font-size: 18px; }
-    #dpad .up { left: 43px; }
-    #dpad .down { top: 86px; left: 43px; }
-    #dpad .left { top: 43px; }
-    #dpad .right { top: 43px; left: 86px; }
+    #joystick-zone { width: 120px; height: 120px; bottom: 20px; left: 10px; }
+    #joystick-knob { width: 50px; height: 50px; }
   }
   @media (max-width: 400px) {
     #header { font-size: 11px; }
@@ -156,17 +178,24 @@
     #legend { display: none; }
     #speed-bar button { width: 22px; height: 22px; font-size: 10px; }
   }
-  @media (max-height: 500px) {
-    #legend { display: none; }
-    #speed-bar { margin-top: 4px; }
-    #dpad { margin-top: 6px; width: 110px; height: 110px; }
-    #dpad button { width: 38px; height: 38px; font-size: 16px; }
-    #dpad .up { left: 36px; }
-    #dpad .down { top: 72px; left: 36px; }
-    #dpad .left { top: 36px; }
-    #dpad .right { top: 36px; left: 72px; }
-    #header { padding: 3px 0; }
+  @media (orientation: landscape) and (max-height: 500px) {
+    #joystick-zone {
+      bottom: 10px;
+      left: 10px;
+      transform: scale(0.8);
+      transform-origin: bottom left;
+    }
+    #mobile-actions {
+      bottom: 10px;
+      right: 10px;
+      transform: scale(0.8);
+      transform-origin: bottom right;
+      flex-direction: column;
+    }
+    #game-canvas { max-height: 90vh; }
+    #header { font-size: 11px; padding: 2px 0; }
   }
+
   #mobile-actions {
     display: none;
     gap: 10px;
@@ -371,17 +400,14 @@
     <div class="leg-item"><span class="key">R</span> Restart (game over)</div>
   </div>
 </div>
-<div id="dpad">
-  <button class="up" data-dir="up">▲</button>
-  <button class="down" data-dir="down">▼</button>
-  <button class="left" data-dir="left">◀</button>
-  <button class="right" data-dir="right">▶</button>
+<div id="joystick-zone">
+  <div id="joystick-knob"></div>
 </div>
 <div id="mobile-actions">
-  <button id="mob-dash">⚡ Dash</button>
-  <button id="mob-portal">🌀 Portal</button>
-  <button id="mob-pause">⏸ Pause</button>
   <button id="mob-quit">✖ Quit</button>
+  <button id="mob-pause">⏸ Pause</button>
+  <button id="mob-portal">🌀 Portal</button>
+  <button id="mob-dash">⚡ Dash</button>
 </div>
 
 <div id="overlay">
@@ -1541,11 +1567,87 @@ document.addEventListener('keydown', e => {
   }
 });
 
-document.querySelectorAll('#dpad button').forEach(btn => {
-  const map = {up:UP,down:DOWN,left:LEFT,right:RIGHT};
-  btn.addEventListener('touchstart', e => { e.preventDefault(); handleDir(map[btn.dataset.dir]); });
-  btn.addEventListener('mousedown', e => { e.preventDefault(); handleDir(map[btn.dataset.dir]); });
-});
+// Joystick implementation
+const joyZone = document.getElementById('joystick-zone');
+const joyKnob = document.getElementById('joystick-knob');
+let joyActive = false;
+let joyCenter = { x: 0, y: 0 };
+let joyTouchStart = { x: 0, y: 0 };
+
+function processJoystick(e) {
+  if (!joyActive) return;
+  e.preventDefault();
+  const touch = e.touches ? e.touches[0] : e;
+  if (!touch) return;
+  
+  // Calculate visual offset from static bounds
+  const vdx = touch.clientX - joyCenter.x;
+  const vdy = touch.clientY - joyCenter.y;
+  const maxR = joyZone.offsetWidth / 2;
+  const vdist = Math.min(Math.hypot(vdx, vdy), maxR);
+  const vang = Math.atan2(vdy, vdx);
+  
+  const knobX = Math.cos(vang) * vdist;
+  const knobY = Math.sin(vang) * vdist;
+  joyKnob.style.transform = `translate(calc(-50% + ${knobX}px), calc(-50% + ${knobY}px))`;
+
+  // Calculate high-responsiveness direction from original touch location 
+  // vs deadzone. This makes rapid micro-swipes feel instant.
+  let dx = touch.clientX - joyTouchStart.x;
+  let dy = touch.clientY - joyTouchStart.y;
+  let dist = Math.hypot(dx, dy);
+
+  // Allow the internal touch origin to follow the thumb if dragged too far
+  if (dist > maxR) {
+    joyTouchStart.x = touch.clientX - (dx / dist) * maxR;
+    joyTouchStart.y = touch.clientY - (dy / dist) * maxR;
+    dx = touch.clientX - joyTouchStart.x;
+    dy = touch.clientY - joyTouchStart.y;
+    dist = maxR;
+  }
+
+  // very small deadzone for immediate responsive turn inputs
+  if (dist > 15) {
+    const isX = Math.abs(dx) > Math.abs(dy);
+    const primary = isX ? (dx > 0 ? RIGHT : LEFT) : (dy > 0 ? DOWN : UP);
+    const secondary = isX ? (dy > 0 ? DOWN : UP) : (dx > 0 ? RIGHT : LEFT);
+    
+    // Identify if swipe is distinctly diagonal (minor axis is at least 35% of magnitude)
+    const isDiagonal = Math.min(Math.abs(dx), Math.abs(dy)) > dist * 0.35;
+
+    if (isDiagonal && pac) {
+      // Smart cornering: buffer the perpendicular axis to your current movement
+      if (pac.dir === primary) handleDir(secondary);
+      else if (pac.dir === secondary) handleDir(primary);
+      else {
+        const r = pixToRow(pac.y), c = pixToCol(pac.x);
+        if (canGo(r, c, primary)) handleDir(primary);
+        else handleDir(secondary);
+      }
+    } else {
+      handleDir(primary);
+    }
+  }
+}
+
+joyZone.addEventListener('touchstart', e => {
+  e.preventDefault();
+  joyActive = true;
+  const touch = e.touches[0];
+  const rect = joyZone.getBoundingClientRect();
+  joyCenter = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+  joyTouchStart = { x: touch.clientX, y: touch.clientY };
+  processJoystick(e);
+}, {passive: false});
+
+joyZone.addEventListener('touchmove', processJoystick, {passive: false});
+const endJoy = (e) => {
+  joyActive = false;
+  joyKnob.style.transform = `translate(-50%, -50%)`;
+};
+joyZone.addEventListener('touchend', endJoy);
+joyZone.addEventListener('touchcancel', endJoy);
+
 document.getElementById('mob-dash').addEventListener('touchstart', e => { 
   e.preventDefault(); 
   if (pac && pac.energy >= 50 && pac.dashTimer <= 0 && !paused) {
