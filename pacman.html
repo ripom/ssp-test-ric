@@ -32,6 +32,7 @@
   #header span { margin: 0 15px; }
   .lives { color: #ff0; text-shadow: 0 0 8px #ff0; }
   .energy { color: #f0f; text-shadow: 0 0 8px #f0f; }
+  .portals { color: #0f0; text-shadow: 0 0 8px #0f0; }
   #game-canvas {
     display: block;
     image-rendering: none;
@@ -317,6 +318,7 @@
   <span>Score: <b id="score">0</b></span>
   <span class="lives">Lives: <b id="lives"></b></span>
   <span class="energy">Energy: <b id="energy">100%</b></span>
+  <span class="portals">Tokens: 🌀 <b id="portals">3</b></span>
   <span>Level: <b id="level">1</b></span>
 </div>
 <canvas id="game-canvas"></canvas>
@@ -362,6 +364,7 @@
     <div class="leg-item"><span class="key">↑↓←→</span> Move</div>
     <div class="leg-item"><span class="key">WASD</span> Move (alt)</div>
     <div class="leg-item"><span class="key">SPACE</span> Phase Dash (-50 Energy)</div>
+    <div class="leg-item"><span class="key">E / SHIFT</span> Drop Portal (3 uses)</div>
     <div class="leg-item"><span class="key">P</span> Pause / Resume</div>
     <div class="leg-item"><span class="key">Q</span> Quit to title</div>
     <div class="leg-item"><span class="key">1-9</span> Set speed</div>
@@ -376,6 +379,7 @@
 </div>
 <div id="mobile-actions">
   <button id="mob-dash">⚡ Dash</button>
+  <button id="mob-portal">🌀 Portal</button>
   <button id="mob-pause">⏸ Pause</button>
   <button id="mob-quit">✖ Quit</button>
 </div>
@@ -648,6 +652,9 @@ let maze, totalDots, dotsEaten;
 let score, lives, level, gameOver, won, paused, running;
 let messageTxt, messageTimer, flashTimer;
 let speedLevel = 5;
+let portalTokens = 3;
+let activePortals = [];
+let bonusToken = { active: false, r: 0, c: 0, timer: 0, spawnTimer: 0 };
 // Pixels per second at each speed level
 const SPEEDS = [40, 55, 75, 95, 120, 150, 190, 240, 310];
 
@@ -672,7 +679,7 @@ function makePac(r, c) {
   return {
     x: cellCenterX(c), y: cellCenterY(r),
     dir: NONE, nextDir: NONE, mouthPhase: 0,
-    energy: 100, dashTimer: 0, trail: []
+    energy: 100, dashTimer: 0, trail: [], empTimer: 0, comboBase: 0, warpCooldown: 0
   };
 }
 // Ghost house gate row/col (center of top wall)
@@ -850,13 +857,19 @@ function recoverGhostDirection(ghost, pacRow, pacCol) {
 
 // ─── Init / Reset ─────────────────────────────────────────────
 function initMaze() {
-  maze = []; ghosts = []; totalDots = 0; dotsEaten = 0;
+  maze = []; ghosts = []; totalDots = 0; dotsEaten = 0; activePortals = []; portalTokens = 3;
+  bonusToken = { active: false, r: 0, c: 0, timer: 0, spawnTimer: 10 + Math.random() * 20 };
   let gi = 0;
   for (let r = 0; r < ROWS; r++) {
     const row = [];
     for (let c = 0; c < COLS; c++) {
       const ch = MAZE_TEMPLATE[r][c];
-      if (ch === 'P') { pac = makePac(r, c); row.push(' '); }
+      if (ch === 'P') { 
+        pac = makePac(r, c); 
+        bonusToken.r = r;
+        bonusToken.c = c;
+        row.push(' '); 
+      }
       else if (ch === 'G') { ghosts.push(makeGhost(r, c, gi++)); row.push(' '); }
       else { if (ch === '.' || ch === 'o') totalDots++; row.push(ch); }
     }
@@ -952,34 +965,87 @@ function updatePacman(dt) {
     speed *= 2.5; // Dash speed boost
     pac.trail.push({ x: pac.x, y: pac.y, age: 0.3 });
   }
+
+  // Handle EMP logic
+  if (pac.empTimer > 0) {
+    pac.empTimer -= dt;
+  }
+  
   // Decay trail
   for (const t of pac.trail) t.age -= dt;
   pac.trail = pac.trail.filter(t => t.age > 0);
+
+  // Handle active portals time and intersection
+  for (let i = activePortals.length - 1; i >= 0; i--) {
+    let p = activePortals[i];
+    p.timer -= dt;
+    if (p.timer <= 0) {
+      activePortals.splice(i, 1);
+    }
+  }
+
+  // Handle warp cooldown
+  if (pac.warpCooldown > 0) pac.warpCooldown -= dt;
 
   const dist = speed * dt;
 
   // Current grid cell
   const col = pixToCol(pac.x);
   const row = pixToRow(pac.y);
+  
+  if (col !== pac.lastCol || row !== pac.lastRow) {
+    // Only update previous positions when actually leaving a cell
+    if (pac.lastCol !== -1 && pac.lastRow !== -1) {
+      pac.prevCol = pac.lastCol;
+      pac.prevRow = pac.lastRow;
+    } else {
+      pac.prevCol = col;
+      pac.prevRow = row;
+    }
+    pac.lastCol = col;
+    pac.lastRow = row;
+  }
+
+  // Handle bonus token logic
+  if (!bonusToken.active) {
+    bonusToken.spawnTimer -= dt;
+    if (bonusToken.spawnTimer <= 0) {
+      bonusToken.active = true;
+      bonusToken.timer = 10.0;
+      bonusToken.spawnTimer = 20 + Math.random() * 20;
+    }
+  } else {
+    bonusToken.timer -= dt;
+    if (bonusToken.timer <= 0) {
+      bonusToken.active = false;
+    }
+  }
+
+  // Pickup items ANYTIME inside the cell (fixes skips during fast dashes)
+  const cell = maze[row][col];
+  if (bonusToken.active && row === bonusToken.r && col === bonusToken.c) {
+    portalTokens++;
+    bonusToken.active = false;
+    showMessage('TOKEN SECURED! +1');
+    sndPellet();
+  }
+
+  if (cell === '.') {
+    maze[row][col] = ' '; score += 10; dotsEaten++; sndChomp();
+    pac.energy = Math.min(100, pac.energy + 2);
+  } else if (cell === 'o') {
+    maze[row][col] = ' '; score += 50; dotsEaten++; sndPellet();
+    pac.energy = Math.min(100, pac.energy + 10);
+    const ft = settings.frightenedTime;
+    for (const g of ghosts) if (!g.eaten && !g.inHouse) {
+      g.frightened = true; g.frightenedTimer = ft;
+      if (g.dir !== NONE) { g.dir = REVERSE[g.dir]; g.lastSnapX = -1; g.lastSnapY = -1; }
+    }
+  }
+  if (dotsEaten >= totalDots) { won = true; return; }
 
   // At cell center: try turning or check wall ahead
   if (atCellCenter(pac, pac.dir)) {
-    // Pickup items
-    const cell = maze[row][col];
-    if (cell === '.') {
-      maze[row][col] = ' '; score += 10; dotsEaten++; sndChomp();
-      pac.energy = Math.min(100, pac.energy + 2);
-    } else if (cell === 'o') {
-      maze[row][col] = ' '; score += 50; dotsEaten++; sndPellet();
-      pac.energy = Math.min(100, pac.energy + 10);
-      const ft = settings.frightenedTime;
-      for (const g of ghosts) if (!g.eaten && !g.inHouse) {
-        g.frightened = true; g.frightenedTimer = ft;
-        if (g.dir !== NONE) { g.dir = REVERSE[g.dir]; g.lastSnapX = -1; g.lastSnapY = -1; }
-      }
-    }
-    if (dotsEaten >= totalDots) { won = true; return; }
-
     // Try queued turn
     if (pac.nextDir !== NONE && canGo(row, col, pac.nextDir)) {
       pac.dir = pac.nextDir;
@@ -1160,14 +1226,64 @@ function updateGhosts(dt) {
 // ─── Collisions ───────────────────────────────────────────────
 function checkCollisions() {
   const thresh = CELL * 0.55;
+  if (pac.dashTimer <= 0) pac.comboBase = 0; // reset combo when dash ends
+
+  // Portal collisions for Pacman
+  if (pac.warpCooldown <= 0) {
+    const pCol = pixToCol(pac.x);
+    const pRow = pixToRow(pac.y);
+    for (const p of activePortals) {
+      if (p.col === pCol && p.row === pRow) {
+        // Warp pacman randomly to a valid playable spot
+        let emptyCells = [];
+        for (let r = 0; r < ROWS; r++) {
+          for (let c = 0; c < COLS; c++) {
+            const tmpl = MAZE_TEMPLATE[r][c];
+            if ((tmpl === '.' || tmpl === 'o' || tmpl === 'P') && (r !== pRow || c !== pCol)) {
+              emptyCells.push({r, c});
+            }
+          }
+        }
+        if (emptyCells.length > 0) {
+          const tgt = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+          pac.x = cellCenterX(tgt.c);
+          pac.y = cellCenterY(tgt.r);
+          pac.warpCooldown = 1.0;
+          showMessage('RANDOM WARP!');
+          sndStart();
+          break;
+        }
+      }
+    }
+  }
+
   for (const g of ghosts) {
+    // Portal collisions for Ghost
+    if (!g.inHouse) {
+      const gCol = pixToCol(g.x);
+      const gRow = pixToRow(g.y);
+      for (const p of activePortals) {
+        if (p.col === gCol && p.row === gRow) {
+          g.x = cellCenterX(g.startCol);
+          g.y = cellCenterY(g.startRow);
+          g.inHouse = true;
+          g.houseTimer = 3.0;
+          g.dir = UP;
+          g.eaten = false;
+          g.frightened = false;
+        }
+      }
+    }
+
     const dx = pac.x - g.x, dy = pac.y - g.y;
     if (dx * dx + dy * dy < thresh * thresh) {
       if (pac.dashTimer > 0 && !g.eaten && g.stunTimer <= 0) {
         g.stunTimer = 4.0;
-        score += 50; 
+        pac.comboBase++;
+        const pts = 50 * pac.comboBase;
+        score += pts; 
         sndEatGhost(); 
-        showMessage('STUNNED! +50');
+        showMessage('STUNNED x' + pac.comboBase + '! +' + pts);
       } else if (g.frightened && !g.eaten) {
         g.eaten = true; score += 200; sndEatGhost(); showMessage('YUM! +200');
       } else if (!g.eaten && g.stunTimer <= 0) {
@@ -1187,7 +1303,11 @@ function updateHUD(dt) {
   document.getElementById('score').textContent = score;
   document.getElementById('lives').textContent = '◉ '.repeat(lives).trim();
   document.getElementById('level').textContent = level;
-  if (pac) document.getElementById('energy').textContent = Math.floor(pac.energy) + '%';
+  if (pac) {
+    document.getElementById('energy').textContent = Math.floor(pac.energy) + '%';
+    const pEl = document.getElementById('portals');
+    if (pEl) pEl.textContent = portalTokens;
+  }
   const el = document.getElementById('message');
   if (messageTimer > 0) { if (dt) messageTimer -= dt; el.textContent = messageTxt; }
   else el.textContent = '';
@@ -1242,6 +1362,43 @@ function draw() {
         ctx.shadowBlur = 0;
       }
     }
+  }
+
+  // Active Portals
+  if (typeof activePortals !== 'undefined') {
+    for (const p of activePortals) {
+      if (p.timer <= 0) continue;
+      const x = p.col * CELL;
+      const y = p.row * CELL;
+      const swirl = Math.floor(flashTimer / 3) % 2 === 0 ? '#b0f' : '#f0f';
+      ctx.fillStyle = swirl;
+      ctx.shadowColor = '#f0f'; ctx.shadowBlur = 10;
+      ctx.beginPath();
+      // Inner vibrating circle
+      const radius = (CELL/2) * (0.6 + 0.3 * Math.sin(flashTimer * 0.1));
+      ctx.arc(x+CELL/2, y+CELL/2, radius, 0, Math.PI*2);
+      ctx.fill();
+      ctx.fillStyle = '#fff';
+      ctx.font = "8px 'Courier New'";
+      ctx.textAlign = 'center';
+      ctx.fillText(Math.ceil(p.timer), x+CELL/2, y+CELL/2+3);
+      ctx.shadowBlur = 0;
+    }
+  }
+
+  // Bonus Token
+  if (bonusToken && bonusToken.active) {
+    const bx = bonusToken.c * CELL + CELL / 2;
+    const by = bonusToken.r * CELL + CELL / 2;
+    const pulse = 1 + 0.3 * Math.sin(flashTimer * 0.2);
+    ctx.fillStyle = '#0f0';
+    ctx.shadowColor = '#0f0';
+    ctx.shadowBlur = 10 + 5 * Math.sin(flashTimer * 0.2);
+    ctx.font = `bold ${Math.floor(CELL * 0.8 * pulse)}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('🌀', bx, by);
+    ctx.shadowBlur = 0;
   }
 
   // Pacman Trail
@@ -1360,6 +1517,17 @@ document.addEventListener('keydown', e => {
     case 'ArrowDown': case 's': case 'S': e.preventDefault(); handleDir(DOWN); break;
     case 'ArrowLeft': case 'a': case 'A': e.preventDefault(); handleDir(LEFT); break;
     case 'ArrowRight': case 'd': case 'D': e.preventDefault(); handleDir(RIGHT); break;
+    case 'e': case 'E': case 'Shift':
+      e.preventDefault();
+      if (pac && portalTokens > 0 && !paused) {
+        portalTokens--;
+        // Place behind pacman. If prevCol/prevRow not set yet, use current cell.
+        const pR = (pac.prevRow !== undefined) ? pac.prevRow : pixToRow(pac.y);
+        const pC = (pac.prevCol !== undefined) ? pac.prevCol : pixToCol(pac.x);
+        activePortals.push({ row: pR, col: pC, timer: 15.0 });
+        showMessage('PORTAL SET! Remaining: ' + portalTokens);
+      }
+      break;
     case ' ': 
       e.preventDefault(); 
       if (pac && pac.energy >= 50 && pac.dashTimer <= 0 && !paused) {
@@ -1389,6 +1557,20 @@ document.getElementById('mob-dash').addEventListener('click', () => {
     pac.energy -= 50; pac.dashTimer = 0.5; sndStart();
   }
 });
+
+const dropPortal = (e) => {
+  if (e) e.preventDefault();
+  if (pac && portalTokens > 0 && !paused) {
+    portalTokens--;
+    const pR = (pac.prevRow !== undefined) ? pac.prevRow : pixToRow(pac.y);
+    const pC = (pac.prevCol !== undefined) ? pac.prevCol : pixToCol(pac.x);
+    activePortals.push({ row: pR, col: pC, timer: 15.0 });
+    showMessage('PORTAL SET! ' + portalTokens);
+  }
+};
+document.getElementById('mob-portal').addEventListener('touchstart', dropPortal);
+document.getElementById('mob-portal').addEventListener('click', dropPortal);
+
 document.getElementById('mob-pause').addEventListener('click', () => paused=!paused);
 document.getElementById('mob-pause').addEventListener('touchend', e => { e.preventDefault(); paused=!paused; });
 document.getElementById('mob-quit').addEventListener('click', () => { showOverlay('PACMAN','◉ < · · · ♠ ♣ ♦ ♥','START'); running=false; stopBGM(); });
