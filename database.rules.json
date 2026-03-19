@@ -1,0 +1,30 @@
+{
+  "rules": {
+    "lobby": {
+      ".read": true,
+      "$roomCode": {
+        ".write": "newData.exists() ? (newData.child('host').isString() && newData.child('host').val().length <= 50 && newData.child('mode').isString() && newData.child('mode').val().length <= 20 && newData.child('label').isString() && newData.child('label').val().length <= 100) : true"
+      }
+    },
+    "rooms": {
+      "$roomCode": {
+        "state": {
+          ".read": true,
+          ".write": "newData.exists() ? (newData.child('_ts').isNumber() && newData.child('seq').isNumber()) : true"
+        },
+        "messages": {
+          ".read": true,
+          "$messageId": {
+            ".write": "newData.exists() ? (newData.child('_from').isString() && newData.child('_from').val().length <= 50 && newData.child('t').isString() && newData.child('t').val().length <= 20) : true"
+          }
+        },
+        "seats": {
+          ".read": true,
+          "$playerId": {
+            ".write": "newData.exists() ? newData.isNumber() : true"
+          }
+        }
+      }
+    }
+  }
+}
