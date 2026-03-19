@@ -339,6 +339,14 @@
   }
   #audio-status.ok { color: #0f0; }
   #audio-status.err { color: #f44; }
+  #fullscreen-btn{
+    position:fixed;bottom:clamp(4px,1vh,10px);right:clamp(4px,1vw,10px);z-index:60;
+    background:rgba(0,0,0,0.6);border:1px solid rgba(255,255,255,0.2);
+    color:#ddd;padding:4px 12px;border-radius:6px;cursor:pointer;
+    font-size:12px;font-family:'Courier New',monospace;touch-action:manipulation;
+    min-height:30px;
+  }
+  #fullscreen-btn:hover{background:rgba(0,0,0,0.8);color:#ff0}
 </style>
 </head>
 <body>
@@ -393,6 +401,7 @@
     <div class="leg-item"><span class="key">↑↓←→</span> Move</div>
     <div class="leg-item"><span class="key">WASD</span> Move (alt)</div>
     <div class="leg-item"><span class="key">SPACE</span> Phase Dash (-50 Energy)</div>
+    <div class="leg-item"><span class="key">F</span> EMP Blast (-100 Energy)</div>
     <div class="leg-item"><span class="key">E / SHIFT</span> Drop Portal (3 uses)</div>
     <div class="leg-item"><span class="key">P</span> Pause / Resume</div>
     <div class="leg-item"><span class="key">Q</span> Quit to title</div>
@@ -404,9 +413,9 @@
   <div id="joystick-knob"></div>
 </div>
 <div id="mobile-actions">
-  <button id="mob-quit">✖ Quit</button>
   <button id="mob-pause">⏸ Pause</button>
   <button id="mob-portal">🌀 Portal</button>
+  <button id="mob-emp">💥 EMP</button>
   <button id="mob-dash">⚡ Dash</button>
 </div>
 
@@ -421,6 +430,8 @@
   </div>
   <button class="start-btn" id="start-btn">START</button>
 </div>
+
+<button id="fullscreen-btn" onclick="toggleFullscreen()">⛶ Fullscreen</button>
 
 <script>
 // ─── Maze Template ────────────────────────────────────────────
@@ -680,6 +691,12 @@ let messageTxt, messageTimer, flashTimer;
 let speedLevel = 5;
 let portalTokens = 3;
 let activePortals = [];
+let activeLasers = [];
+let empVisualTimer = 0;
+let freezeTimer = 0;
+let _deathResetPending = false;
+let empOriginX = 0;
+let empOriginY = 0;
 let bonusToken = { active: false, r: 0, c: 0, timer: 0, spawnTimer: 0 };
 // Pixels per second at each speed level
 const SPEEDS = [40, 55, 75, 95, 120, 150, 190, 240, 310];
@@ -722,7 +739,7 @@ function makeGhost(r, c, idx) {
     startRow: r, startCol: c, idx: idx,
     dir: inHouse ? UP : [UP, DOWN, LEFT, RIGHT][Math.floor(Math.random() * 4)],
     frightened: false, frightenedTimer: 0, eaten: false,
-    inHouse: inHouse, houseTimer: inHouse ? idx * 3.0 : 0,
+    inHouse: inHouse, houseTimer: inHouse ? idx * (level <= 2 ? 5.0 : level <= 4 ? 4.0 : 3.0) : 0,
     prevX: x, prevY: y, stuckTimer: 0,
     lastSnapX: -1, lastSnapY: -1, stunTimer: 0
   };
@@ -732,10 +749,14 @@ function makeGhost(r, c, idx) {
 function getLevelSettings() {
   const l = level;
   return {
-    ghostSpeedMult:   Math.min(1.0 + (l - 1) * 0.1, 1.8),
-    ghostChaseChance: Math.min(0.7 + (l - 1) * 0.04, 0.95),
-    frightenedTime:   Math.max(6.0 - (l - 1) * 0.5, 2.0),
-    pacSpeedMult:     Math.min(1.0 + (l - 1) * 0.04, 1.3),
+    // Very gentle ramp: level 1=0.65x, level 10≈0.92x, level 20=1.22x, cap 1.8
+    ghostSpeedMult:   Math.min(0.65 + (l - 1) * 0.03, 1.8),
+    // Chase chance: level 1=35%, level 10=62%, level 20=92%, cap 95%
+    ghostChaseChance: Math.min(0.35 + (l - 1) * 0.03, 0.95),
+    // Power pellets: level 1=10s, level 10=5.5s, min 2s
+    frightenedTime:   Math.max(10.0 - (l - 1) * 0.5, 2.0),
+    // Pacman keeps a speed advantage in early levels
+    pacSpeedMult:     Math.min(1.08 + (l - 1) * 0.02, 1.3),
   };
 }
 
@@ -835,11 +856,17 @@ function chooseRoamingGhostDir(ghost, row, col, pacRow, pacCol, allowReverse) {
     return bestDirs[Math.floor(Math.random() * bestDirs.length)];
   }
 
-  if (Math.random() < getLevelSettings().ghostChaseChance) {
+  const chaseChance = ghost.isApex ? 1.0 : getLevelSettings().ghostChaseChance;
+  if (Math.random() < chaseChance) {
     return possible.reduce((best, d) => {
       const nr = row + DY[d], nc = wrapCol(col + DX[d]);
-      const dd = (nr - pacRow) ** 2 + (nc - pacCol) ** 2;
-      const bd = (row + DY[best] - pacRow) ** 2 + (wrapCol(col + DX[best]) - pacCol) ** 2;
+      // Apex tries to intercept slightly ahead of pacman if possible, else direct chase.
+      const td = ghost.isApex && pac.dir !== NONE ? (pacRow + DY[pac.dir]*2) : pacRow;
+      const tc = ghost.isApex && pac.dir !== NONE ? wrapCol(pacCol + DX[pac.dir]*2) : pacCol;
+      const dd = (nr - td) ** 2 + (nc - tc) ** 2;
+      
+      const b_nr = row + DY[best], b_nc = wrapCol(col + DX[best]);
+      const bd = (b_nr - td) ** 2 + (b_nc - tc) ** 2;
       return dd < bd ? d : best;
     }, possible[0]);
   }
@@ -881,9 +908,20 @@ function recoverGhostDirection(ghost, pacRow, pacCol) {
   if (nextDir !== NONE) ghost.dir = nextDir;
 }
 
+function distToSegment(px, py, x1, y1, x2, y2) {
+  const l2 = (x1 - x2)**2 + (y1 - y2)**2;
+  if (l2 === 0) return Math.hypot(px - x1, py - y1);
+  let t = ((px - x1)*(x2 - x1) + (py - y1)*(y2 - y1)) / l2;
+  t = Math.max(0, Math.min(1, t));
+  const projX = x1 + t * (x2 - x1);
+  const projY = y1 + t * (y2 - y1);
+  return Math.hypot(px - projX, py - projY);
+}
+
 // ─── Init / Reset ─────────────────────────────────────────────
 function initMaze() {
   maze = []; ghosts = []; totalDots = 0; dotsEaten = 0; activePortals = []; portalTokens = 3;
+  activeLasers = [];
   bonusToken = { active: false, r: 0, c: 0, timer: 0, spawnTimer: 10 + Math.random() * 20 };
   let gi = 0;
   for (let r = 0; r < ROWS; r++) {
@@ -901,6 +939,15 @@ function initMaze() {
     }
     maze.push(row);
   }
+  
+  if (level >= 6) {
+    // Apex spawns ABOVE the gate mouth so it enters the maze directly
+    let apex = makeGhost(11, 13, gi++);
+    apex.isApex = true;
+    apex.inHouse = false;
+    apex.houseTimer = level <= 7 ? 15.0 : level <= 10 ? 10.0 : 8.0;
+    ghosts.push(apex);
+  }
 }
 
 function resetPositions() {
@@ -916,7 +963,8 @@ function resetPositions() {
     const inHouse = (g.startRow >= GATE_ROW && g.startRow <= 16 && g.startCol >= 10 && g.startCol <= 16);
     g.dir = inHouse ? UP : [UP, DOWN, LEFT, RIGHT][Math.floor(Math.random() * 4)];
     g.frightened = false; g.frightenedTimer = 0; g.eaten = false; g.stunTimer = 0;
-    g.inHouse = inHouse; g.houseTimer = inHouse ? g.idx * 3.0 : 0;
+    g._empHit = false;
+    g.inHouse = inHouse; g.houseTimer = inHouse ? (g.isApex ? 7.0 : g.idx * (level <= 2 ? 5.0 : level <= 4 ? 4.0 : 3.0)) : (g.isApex ? 10.0 : 0);
     g.prevX = g.x; g.prevY = g.y; g.stuckTimer = 0;
     g.lastSnapX = -1; g.lastSnapY = -1;
   }
@@ -924,16 +972,24 @@ function resetPositions() {
 
 function fullReset() {
   score = 0; lives = 3; level = 1;
-  gameOver = false; won = false; paused = false;
+  gameOver = false; won = false; paused = false; freezeTimer = 0;
   messageTxt = ''; messageTimer = 0; flashTimer = 0;
   initMaze(); updateHUD();
 }
 
 function nextLevel() {
   level++; sndLevelUp();
-  showMessage('LEVEL ' + level + '!');
+  if (level === 6) {
+    // Show dramatic Apex warning banner
+    _apexBanner = { timer: 4.0, phase: 0 };
+    paused = true;
+    setTimeout(function(){ paused = false; _apexBanner = null; }, 4000);
+  } else {
+    showMessage('LEVEL ' + level + '!');
+  }
   initMaze(); updateHUD();
 }
+var _apexBanner = null;
 
 // ─── Core pixel movement ──────────────────────────────────────
 // Move an entity by `dist` pixels in direction `d`.
@@ -964,7 +1020,7 @@ function atCellCenter(entity, d) {
   const row = pixToRow(entity.y);
   const cx = cellCenterX(col);
   const cy = cellCenterY(row);
-  const tolerance = 1.5;
+  const tolerance = 3.0;
   return Math.abs(entity.x - cx) <= tolerance && Math.abs(entity.y - cy) <= tolerance;
 }
 
@@ -1063,41 +1119,80 @@ function updatePacman(dt) {
     maze[row][col] = ' '; score += 50; dotsEaten++; sndPellet();
     pac.energy = Math.min(100, pac.energy + 10);
     const ft = settings.frightenedTime;
-    for (const g of ghosts) if (!g.eaten && !g.inHouse) {
+    for (const g of ghosts) if (!g.eaten) {
       g.frightened = true; g.frightenedTimer = ft;
-      if (g.dir !== NONE) { g.dir = REVERSE[g.dir]; g.lastSnapX = -1; g.lastSnapY = -1; }
+      if (!g.inHouse && g.dir !== NONE) { g.dir = REVERSE[g.dir]; g.lastSnapX = -1; g.lastSnapY = -1; }
     }
   }
   if (dotsEaten >= totalDots) { won = true; return; }
 
-  // At cell center: try turning or check wall ahead
-  if (atCellCenter(pac, pac.dir)) {
-    // Try queued turn
+  // === Smooth movement with cell-center decision points ===
+  if (pac.dir === NONE) {
+    // Stopped: try queued direction
     if (pac.nextDir !== NONE && canGo(row, col, pac.nextDir)) {
+      snapToCenter(pac);
       pac.dir = pac.nextDir;
       pac.nextDir = NONE;
-      snapToCenter(pac);
+      moveEntity(pac, pac.dir, dist);
     }
-    // Check wall ahead
-    if (pac.dir !== NONE && !canGo(row, col, pac.dir)) {
-      snapToCenter(pac);
-      pac.dir = NONE;
-      return;
-    }
+    pac.mouthPhase += dt * 14;
+    return;
   }
 
-  if (pac.dir !== NONE) {
-    moveEntity(pac, pac.dir, dist);
-    // Don't overshoot into walls
-    const nc = pixToCol(pac.x);
-    const nr = pixToRow(pac.y);
-    if (isWall(nr, wrapCol(nc))) {
-      // Snap back to the last safe center
-      pac.x -= DX[pac.dir] * dist;
-      pac.y -= DY[pac.dir] * dist;
-      snapToCenter(pac);
-      pac.dir = NONE;
+  // Signed distance to current cell center along movement axis
+  // Positive = center is ahead, Negative = already past center
+  const cx2 = cellCenterX(col);
+  const cy2 = cellCenterY(row);
+  let distToCenter;
+  if (pac.dir === LEFT)       distToCenter = pac.x - cx2;
+  else if (pac.dir === RIGHT) distToCenter = cx2 - pac.x;
+  else if (pac.dir === UP)    distToCenter = pac.y - cy2;
+  else /* DOWN */             distToCenter = cy2 - pac.y;
+
+  const wantsTurn = pac.nextDir !== NONE;
+  const wallAhead = !canGo(row, col, pac.dir);
+  const nearCenter = distToCenter > -0.5 && distToCenter <= dist + 0.5;
+
+  if (nearCenter && (wantsTurn || wallAhead)) {
+    // At or crossing cell center with a pending decision
+    const moveToCenter = Math.max(0, distToCenter);
+    const remainder = dist - moveToCenter;
+
+    snapToCenter(pac);
+    const snapRow = pixToRow(pac.y);
+    const snapCol = pixToCol(pac.x);
+
+    // Try queued turn
+    if (pac.nextDir !== NONE && canGo(snapRow, snapCol, pac.nextDir)) {
+      pac.dir = pac.nextDir;
+      pac.nextDir = NONE;
     }
+
+    // Wall check in current direction
+    if (!canGo(snapRow, snapCol, pac.dir)) {
+      pac.dir = NONE;
+      pac.mouthPhase += dt * 14;
+      return;
+    }
+
+    // Continue moving with remainder in (possibly new) direction
+    if (remainder > 0) {
+      moveEntity(pac, pac.dir, remainder);
+    }
+  } else {
+    // Not at a decision point — move freely
+    moveEntity(pac, pac.dir, dist);
+  }
+
+  // Safety: prevent entering wall cells
+  const nc = pixToCol(pac.x);
+  const nr = pixToRow(pac.y);
+  if (isWall(nr, wrapCol(nc))) {
+    const prevRow = nr - DY[pac.dir];
+    const prevCol = wrapCol(nc - DX[pac.dir]);
+    pac.x = cellCenterX(prevCol);
+    pac.y = cellCenterY(prevRow);
+    pac.dir = NONE;
   }
 
   pac.mouthPhase += dt * 14;
@@ -1121,6 +1216,12 @@ function updateGhosts(dt) {
     if (g.frightened && !g.eaten) {
       g.frightenedTimer -= dt;
       if (g.frightenedTimer <= 0) g.frightened = false;
+    }
+
+    // Non-inHouse ghosts with houseTimer (e.g. Apex waiting above gate): just wait
+    if (!g.inHouse && g.houseTimer > 0 && !g.eaten) {
+      g.houseTimer -= dt;
+      continue;
     }
 
     // Ghost house: count down release timer, bounce up/down while waiting
@@ -1174,9 +1275,13 @@ function updateGhosts(dt) {
       continue;
     }
 
-    const spd = g.eaten ? baseSpeed * 2.5 :
+    let spd = g.eaten ? baseSpeed * 2.5 :
                 g.frightened ? baseSpeed * settings.ghostSpeedMult * 0.5 :
                 baseSpeed * settings.ghostSpeedMult;
+                
+    if (g.isApex && !g.eaten && !g.frightened) {
+      spd *= 1.25; // Apex is 25% faster
+    }
     const dist = spd * dt;
 
     const col = pixToCol(g.x);
@@ -1247,6 +1352,40 @@ function updateGhosts(dt) {
     g.prevX = g.x;
     g.prevY = g.y;
   }
+
+  // Update Dynamic Ghost Lasers (Introduced at Level 10)
+  activeLasers = [];
+  if (level >= 10) {
+    for (let i = 0; i < ghosts.length; i++) {
+      for (let j = i + 1; j < ghosts.length; j++) {
+        const g1 = ghosts[i], g2 = ghosts[j];
+        if (g1.eaten || g2.eaten || g1.inHouse || g2.inHouse) continue;
+        if (g1.stunTimer > 0 || g2.stunTimer > 0) continue; 
+        if (g1.frightened || g2.frightened) continue; 
+
+        const r1 = pixToRow(g1.y), c1 = pixToCol(g1.x);
+        const r2 = pixToRow(g2.y), c2 = pixToCol(g2.x);
+
+        if (r1 === r2) { // Same Row
+          let minC = Math.min(c1, c2), maxC = Math.max(c1, c2);
+          if (maxC - minC > 8) continue; // max 8 cells range
+          let wall = false;
+          for (let c = minC; c <= maxC; c++) {
+            if (isGhostWall(r1, c)) { wall = true; break; }
+          }
+          if (!wall) activeLasers.push({ g1, g2, x1: g1.x, y1: g1.y, x2: g2.x, y2: g2.y });
+        } else if (c1 === c2) { // Same Col
+          let minR = Math.min(r1, r2), maxR = Math.max(r1, r2);
+          if (maxR - minR > 8) continue;
+          let wall = false;
+          for (let r = minR; r <= maxR; r++) {
+            if (isGhostWall(r, c1)) { wall = true; break; }
+          }
+          if (!wall) activeLasers.push({ g1, g2, x1: g1.x, y1: g1.y, x2: g2.x, y2: g2.y });
+        }
+      }
+    }
+  }
 }
 
 // ─── Collisions ───────────────────────────────────────────────
@@ -1312,10 +1451,32 @@ function checkCollisions() {
         showMessage('STUNNED x' + pac.comboBase + '! +' + pts);
       } else if (g.frightened && !g.eaten) {
         g.eaten = true; score += 200; sndEatGhost(); showMessage('YUM! +200');
+        // Freeze game briefly when eating a ghost
+        freezeTimer = 0.5;
       } else if (!g.eaten && g.stunTimer <= 0) {
         lives--; sndDeath();
         if (lives <= 0) { gameOver = true; sndGameOver(); }
-        else { showMessage('OUCH! Lives: ' + lives); resetPositions(); }
+        else { showMessage('OUCH! Lives: ' + lives); freezeTimer = 2.0; _deathResetPending = true; }
+        return;
+      }
+    }
+  }
+
+  // Laser Collisions
+  for (const l of activeLasers) {
+    if (distToSegment(pac.x, pac.y, l.x1, l.y1, l.x2, l.y2) < CELL * 0.5) {
+      if (pac.dashTimer > 0) {
+        // Dash shatters the laser and stuns both ghosts!
+        l.g1.stunTimer = 4.0;
+        l.g2.stunTimer = 4.0;
+        pac.comboBase += 2;
+        score += 150;
+        sndEatGhost();
+        showMessage('LASER SHATTERED! +150');
+      } else {
+        lives--; sndDeath();
+        if (lives <= 0) { gameOver = true; sndGameOver(); }
+        else { showMessage('ZAPPED! Lives: ' + lives); freezeTimer = 2.0; _deathResetPending = true; }
         return;
       }
     }
@@ -1390,6 +1551,21 @@ function draw() {
     }
   }
 
+  // Draw Lasers
+  if (typeof activeLasers !== 'undefined') {
+    for (const l of activeLasers) {
+      ctx.strokeStyle = (Math.floor(flashTimer / 2) % 2 === 0) ? '#f00' : '#ff5555';
+      ctx.lineWidth = 3;
+      ctx.shadowColor = '#f00';
+      ctx.shadowBlur = 15;
+      ctx.beginPath();
+      ctx.moveTo(l.x1, l.y1);
+      ctx.lineTo(l.x2, l.y2);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    }
+  }
+
   // Active Portals
   if (typeof activePortals !== 'undefined') {
     for (const p of activePortals) {
@@ -1453,36 +1629,137 @@ function draw() {
       ctx.beginPath(); ctx.arc(gx+CELL*2/3,gy+CELL/2-2,1.5,0,Math.PI*2); ctx.fill();
     } else {
       let ghostColor = GHOST_COLORS[g.idx%4];
+      if (g.isApex) {
+        // Apex: pulsating dark purple/magenta with fire glow — very distinct
+        const pulse = Math.sin(flashTimer * 0.15) * 0.5 + 0.5;
+        const r2 = Math.floor(140 + pulse * 115);
+        const g2 = Math.floor(0 + pulse * 30);
+        const b2 = Math.floor(80 + pulse * 100);
+        ghostColor = 'rgb(' + r2 + ',' + g2 + ',' + b2 + ')';
+      }
+      
       if (g.frightened) ghostColor = ((g.frightenedTimer<2&&Math.floor(g.frightenedTimer*4)%2) ? '#fff' : '#22c');
       if (g.stunTimer > 0) ghostColor = (Math.floor(g.stunTimer * 10) % 2 === 0) ? '#ff0' : '#f0f';
 
       ctx.fillStyle = ghostColor;
       if (g.stunTimer > 0) { ctx.shadowColor = '#f0f'; ctx.shadowBlur = 15; }
+      else if (g.isApex) {
+        // Intense multi-layer glow for Apex
+        const glowPulse = Math.sin(flashTimer * 0.1) * 0.5 + 0.5;
+        ctx.shadowColor = glowPulse > 0.5 ? '#ff00ff' : '#ff0000';
+        ctx.shadowBlur = 25 + glowPulse * 15;
+      }
+      else { ctx.shadowColor = ghostColor; ctx.shadowBlur = 10; }
 
       ctx.beginPath();
-      ctx.arc(gx+CELL/2,gy+CELL/2-2,CELL/2-2,Math.PI,0);
-      ctx.lineTo(gx+CELL-2,gy+CELL-2);
-      const w=(CELL-4)/3;
-      ctx.lineTo(gx+CELL-2-w/2,gy+CELL-5);
-      ctx.lineTo(gx+CELL-2-w,gy+CELL-2);
-      ctx.lineTo(gx+CELL-2-w*1.5,gy+CELL-5);
-      ctx.lineTo(gx+CELL-2-w*2,gy+CELL-2);
-      ctx.lineTo(gx+CELL-2-w*2.5,gy+CELL-5);
-      ctx.lineTo(gx+2,gy+CELL-2);
+      // Apex is 50% bigger (was 30%)
+      const scale = g.isApex ? 1.5 : 1.0;
+      const off = (CELL * (scale - 1)) / 2;
+      const arcW = (CELL/2-2) * scale;
+      const w = (CELL-4)*scale/3;
+      
+      ctx.arc(gx+CELL/2, gy+CELL/2-2 - off/2, arcW, Math.PI,0);
+      ctx.lineTo(gx+CELL/2 + arcW, gy+CELL/2-2 + arcW);
+      ctx.lineTo(gx+CELL/2 + arcW - w/2, gy+CELL/2-2 + arcW - 3*scale);
+      ctx.lineTo(gx+CELL/2 + arcW - w, gy+CELL/2-2 + arcW);
+      ctx.lineTo(gx+CELL/2 + arcW - w*1.5, gy+CELL/2-2 + arcW - 3*scale);
+      ctx.lineTo(gx+CELL/2 + arcW - w*2, gy+CELL/2-2 + arcW);
+      ctx.lineTo(gx+CELL/2 + arcW - w*2.5, gy+CELL/2-2 + arcW - 3*scale);
+      ctx.lineTo(gx+CELL/2 - arcW, gy+CELL/2-2 + arcW);
+      
       ctx.closePath(); ctx.fill();
       ctx.fillStyle='#fff';
-      ctx.beginPath(); ctx.arc(gx+CELL/3,gy+CELL/2-2,3,0,Math.PI*2); ctx.fill();
-      ctx.beginPath(); ctx.arc(gx+CELL*2/3,gy+CELL/2-2,3,0,Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(gx+CELL/3 - off/2,gy+CELL/2-2 - off/2,3*scale,0,Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(gx+CELL*2/3 + off/2,gy+CELL/2-2 - off/2,3*scale,0,Math.PI*2); ctx.fill();
       if (!g.frightened) {
-        ctx.fillStyle='#00f';
+        ctx.fillStyle = g.isApex ? '#ff0' : '#00f'; // bright yellow eyes for apex
         let edx=0,edy=0;
-        if(g.dir===LEFT)edx=-1.2; else if(g.dir===RIGHT)edx=1.2;
-        if(g.dir===UP)edy=-1.2; else if(g.dir===DOWN)edy=1.2;
-        ctx.beginPath(); ctx.arc(gx+CELL/3+edx,gy+CELL/2-2+edy,1.5,0,Math.PI*2); ctx.fill();
-        ctx.beginPath(); ctx.arc(gx+CELL*2/3+edx,gy+CELL/2-2+edy,1.5,0,Math.PI*2); ctx.fill();
+        if(g.dir===LEFT)edx=-1.2*scale; else if(g.dir===RIGHT)edx=1.2*scale;
+        if(g.dir===UP)edy=-1.2*scale; else if(g.dir===DOWN)edy=1.2*scale;
+        ctx.beginPath(); ctx.arc(gx+CELL/3 - off/2 + edx,gy+CELL/2-2 - off/2 +edy,1.5*scale,0,Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(gx+CELL*2/3 + off/2 + edx,gy+CELL/2-2 - off/2 +edy,1.5*scale,0,Math.PI*2); ctx.fill();
+        // Apex: draw angry eyebrows
+        if (g.isApex) {
+          ctx.strokeStyle = '#ff0'; ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(gx+CELL/3 - off/2 - 3*scale, gy+CELL/2-2 - off/2 - 5*scale);
+          ctx.lineTo(gx+CELL/3 - off/2 + 3*scale, gy+CELL/2-2 - off/2 - 3*scale);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(gx+CELL*2/3 + off/2 + 3*scale, gy+CELL/2-2 - off/2 - 5*scale);
+          ctx.lineTo(gx+CELL*2/3 + off/2 - 3*scale, gy+CELL/2-2 - off/2 - 3*scale);
+          ctx.stroke();
+        }
       }
       ctx.shadowBlur = 0;
     }
+  }
+
+  // Draw EMP effect — expanding shockwave ring
+  if (empVisualTimer > 0) {
+    ctx.save();
+    var empProgress = 1 - empVisualTimer;
+    var empMaxR = Math.sqrt(canvas.width*canvas.width + canvas.height*canvas.height);
+    var empR = empMaxR * empProgress;
+    // Outer ring
+    ctx.strokeStyle = 'rgba(0, 255, 255, ' + (empVisualTimer * 0.9) + ')';
+    ctx.lineWidth = 4 + 8 * empVisualTimer;
+    ctx.beginPath();
+    ctx.arc(empOriginX, empOriginY, empR, 0, Math.PI * 2);
+    ctx.stroke();
+    // Inner glow ring
+    ctx.strokeStyle = 'rgba(255, 255, 255, ' + (empVisualTimer * 0.5) + ')';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(empOriginX, empOriginY, Math.max(0, empR - 8), 0, Math.PI * 2);
+    ctx.stroke();
+    // Faint flash at origin
+    if (empVisualTimer > 0.7) {
+      ctx.fillStyle = 'rgba(255, 255, 255, ' + ((empVisualTimer - 0.7) * 1.5) + ')';
+      ctx.beginPath();
+      ctx.arc(empOriginX, empOriginY, 30 * (1 - empProgress), 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // Level 5 Apex warning banner
+  if (_apexBanner && _apexBanner.timer > 0) {
+    _apexBanner.phase += 0.08;
+    var ba = Math.min(1, _apexBanner.timer / 0.5, (4.0 - (4.0 - _apexBanner.timer)) > 3.2 ? (4.0 - _apexBanner.timer) / 0.8 : 1);
+    // Dark overlay
+    ctx.fillStyle = 'rgba(0,0,0,' + (ba * 0.75) + ')';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    // Pulsating border
+    var bpulse = Math.sin(_apexBanner.phase) * 0.3 + 0.7;
+    ctx.strokeStyle = 'rgba(255,0,255,' + (ba * bpulse) + ')';
+    ctx.lineWidth = 4;
+    ctx.strokeRect(10, canvas.height/2 - 70, canvas.width - 20, 140);
+    // Title: LEVEL 5
+    ctx.fillStyle = 'rgba(255,255,0,' + ba + ')';
+    ctx.font = "bold 28px 'Courier New'";
+    ctx.textAlign = 'center';
+    ctx.shadowColor = '#ff0'; ctx.shadowBlur = 15;
+    ctx.fillText('LEVEL 6', canvas.width/2, canvas.height/2 - 38);
+    ctx.shadowBlur = 0;
+    // Warning line 1
+    ctx.fillStyle = 'rgba(255,0,100,' + ba + ')';
+    ctx.font = "bold 18px 'Courier New'";
+    ctx.shadowColor = '#f0f'; ctx.shadowBlur = 10;
+    ctx.fillText('\u26a0 APEX GHOST UNLEASHED!', canvas.width/2, canvas.height/2 - 5);
+    ctx.shadowBlur = 0;
+    // Info line 2
+    ctx.fillStyle = 'rgba(0,255,255,' + ba + ')';
+    ctx.font = "bold 14px 'Courier New'";
+    ctx.shadowColor = '#0ff'; ctx.shadowBlur = 8;
+    ctx.fillText('\u26a1 EMP Weapon Unlocked (F key / \ud83d\udca5 button)', canvas.width/2, canvas.height/2 + 25);
+    ctx.shadowBlur = 0;
+    // Tip
+    ctx.fillStyle = 'rgba(200,200,200,' + (ba * 0.8) + ')';
+    ctx.font = "12px 'Courier New'";
+    ctx.fillText('EMP costs 70 Energy \u2014 stuns all ghosts!', canvas.width/2, canvas.height/2 + 50);
+    ctx.textAlign = 'start';
+    _apexBanner.timer -= 1/60;
   }
 
   // Pacman (pixel position)
@@ -1527,7 +1804,69 @@ function showGameOver() {
 }
 
 // ─── Input ────────────────────────────────────────────────────
-function handleDir(d) { if (pac) pac.nextDir = d; }
+function handleDir(d) {
+  if (!pac) return;
+  const col = pixToCol(pac.x);
+  const row = pixToRow(pac.y);
+  const cx = cellCenterX(col);
+  const cy = cellCenterY(row);
+  // If pac is stopped, try to start moving immediately
+  if (pac.dir === NONE) {
+    if (canGo(row, col, d)) {
+      snapToCenter(pac);
+      pac.dir = d;
+      pac.nextDir = NONE;
+      return;
+    }
+  }
+  // Allow instant reversal (no need to wait for cell center)
+  if (pac.dir !== NONE && d === REVERSE[pac.dir]) {
+    pac.dir = d;
+    pac.nextDir = NONE;
+    return;
+  }
+  // For perpendicular turns: if close enough to the cell center axis, snap and turn immediately
+  if (pac.dir !== NONE && d !== pac.dir) {
+    const turnTolerance = CELL * 0.45;
+    const alignedX = Math.abs(pac.x - cx) <= turnTolerance;
+    const alignedY = Math.abs(pac.y - cy) <= turnTolerance;
+    if (alignedX && alignedY && canGo(row, col, d)) {
+      // Calculate how far past center pac is in the old direction
+      let overshoot = 0;
+      if (pac.dir === LEFT)       overshoot = cx - pac.x;
+      else if (pac.dir === RIGHT) overshoot = pac.x - cx;
+      else if (pac.dir === UP)    overshoot = cy - pac.y;
+      else if (pac.dir === DOWN)  overshoot = pac.y - cy;
+
+      snapToCenter(pac);
+      pac.dir = d;
+      pac.nextDir = NONE;
+
+      // Apply overshoot in new direction to preserve momentum
+      if (overshoot > 0) {
+        moveEntity(pac, pac.dir, overshoot);
+      }
+      return;
+    }
+  }
+  // Otherwise queue it for the next cell center
+  pac.nextDir = d;
+}
+
+function triggerEMP() {
+  // EMP only available when Apex ghost is present (level >= 6)
+  var hasApex = ghosts && ghosts.some(function(g){ return g.isApex; });
+  if (!hasApex) { showMessage('EMP not available yet!'); return; }
+  if (pac && pac.energy >= 70 && !paused) {
+    pac.energy -= 70;
+    empVisualTimer = 1.0;
+    empOriginX = pac.x;
+    empOriginY = pac.y;
+    // Don't freeze ghosts instantly — wave will hit them in updateGhosts
+    sndStart();
+    showMessage('EMP WAVE LAUNCHED!');
+  }
+}
 
 document.addEventListener('keydown', e => {
   if (gameOver) {
@@ -1562,6 +1901,10 @@ document.addEventListener('keydown', e => {
       break;
     case 'p': case 'P': paused=!paused; break;
     case 'q': case 'Q': showOverlay('PACMAN','◉ < · · · ♠ ♣ ♦ ♥','START'); running=false; stopBGM(); break;
+    case 'f': case 'F':
+      e.preventDefault();
+      triggerEMP();
+      break;
     case '1':case '2':case '3':case '4':case '5':
     case '6':case '7':case '8':case '9': setSpeed(parseInt(e.key)); break;
   }
@@ -1675,8 +2018,9 @@ document.getElementById('mob-portal').addEventListener('click', dropPortal);
 
 document.getElementById('mob-pause').addEventListener('click', () => paused=!paused);
 document.getElementById('mob-pause').addEventListener('touchend', e => { e.preventDefault(); paused=!paused; });
-document.getElementById('mob-quit').addEventListener('click', () => { showOverlay('PACMAN','◉ < · · · ♠ ♣ ♦ ♥','START'); running=false; stopBGM(); });
-document.getElementById('mob-quit').addEventListener('touchend', e => { e.preventDefault(); showOverlay('PACMAN','◉ < · · · ♠ ♣ ♦ ♥','START'); running=false; stopBGM(); });
+document.getElementById('mob-emp').addEventListener('click', EMPHandler);
+document.getElementById('mob-emp').addEventListener('touchend', e => { e.preventDefault(); EMPHandler(); });
+function EMPHandler() { triggerEMP(); }
 
 let _tx=0,_ty=0;
 canvas.addEventListener('touchstart', e => { e.preventDefault(); _tx=e.touches[0].clientX; _ty=e.touches[0].clientY; }, {passive:false});
@@ -1727,9 +2071,49 @@ function gameLoop(timestamp) {
   if (gameOver || won) { showGameOver(); draw(); updateHUD(dt); return; }
 
   if (!paused) {
+    // Freeze briefly after eating a ghost or dying
+    if (typeof freezeTimer !== 'undefined' && freezeTimer > 0) {
+      freezeTimer -= dt;
+      if (freezeTimer < 0) freezeTimer = 0;
+      // When death freeze ends, reset positions
+      if (freezeTimer <= 0 && _deathResetPending) {
+        _deathResetPending = false;
+        resetPositions();
+      }
+    } else {
+    if (empVisualTimer > 0) {
+      empVisualTimer -= dt;
+      if (empVisualTimer < 0) empVisualTimer = 0;
+      // Wave-based EMP: freeze ghosts when the expanding ring reaches them
+      var empMaxRadius = Math.sqrt(canvas.width*canvas.width + canvas.height*canvas.height);
+      var empRadius = empMaxRadius * (1 - empVisualTimer);
+      for (var ei = 0; ei < ghosts.length; ei++) {
+        var eg = ghosts[ei];
+        if (eg._empHit) continue; // already hit
+        var edx2 = eg.x - empOriginX, edy2 = eg.y - empOriginY;
+        var eDist = Math.sqrt(edx2*edx2 + edy2*edy2);
+        if (eDist <= empRadius) {
+          eg._empHit = true;
+          if (eg.isApex) {
+            eg.stunTimer = 8.0;
+            eg.frightened = false;
+            eg.dir = [UP,DOWN,LEFT,RIGHT].find(function(d){return d!==eg.dir;}) || UP;
+          } else {
+            eg.stunTimer = 4.0;
+            eg.frightened = false;
+          }
+          sndEatGhost();
+        }
+      }
+      // Reset _empHit flags when EMP ends
+      if (empVisualTimer <= 0) {
+        for (var ri = 0; ri < ghosts.length; ri++) ghosts[ri]._empHit = false;
+      }
+    }
     updatePacman(dt);
     updateGhosts(dt);
     checkCollisions();
+    }
   }
 
   draw();
@@ -1747,6 +2131,33 @@ function gameLoop(timestamp) {
 
   requestAnimationFrame(gameLoop);
 }
+
+// ── Fullscreen ──
+function toggleFullscreen(){
+  var d=document,e=d.documentElement;
+  if(!d.fullscreenElement&&!d.webkitFullscreenElement){
+    if(e.requestFullscreen)e.requestFullscreen().catch(function(){});
+    else if(e.webkitRequestFullscreen)e.webkitRequestFullscreen();
+  } else {
+    if(d.exitFullscreen)d.exitFullscreen();
+    else if(d.webkitExitFullscreen)d.webkitExitFullscreen();
+  }
+}
+function _ufb(){
+  var b=document.getElementById('fullscreen-btn');if(!b)return;
+  var f=!!(document.fullscreenElement||document.webkitFullscreenElement);
+  b.textContent=f?'\u26f6 Exit Fullscreen':'\u26f6 Fullscreen';
+}
+document.addEventListener('fullscreenchange',_ufb);
+document.addEventListener('webkitfullscreenchange',_ufb);
+// Auto-fullscreen on first click (desktop only)
+(function(){
+  if(/Android|iPhone|iPad|iPod|Mobile|Touch/i.test(navigator.userAgent))return;
+  var done=false;
+  function af(){if(done)return;done=true;toggleFullscreen();cl();}
+  function cl(){['click','pointerup','keydown'].forEach(function(e){document.removeEventListener(e,af,true);});}
+  ['click','pointerup','keydown'].forEach(function(e){document.addEventListener(e,af,true);});
+})();
 </script>
 </body>
 </html>
