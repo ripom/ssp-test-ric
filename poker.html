@@ -273,6 +273,7 @@ body{overflow:hidden;background:#0a2a0a}
 
 /* ════ Controls ════ */
 #vol-btn{position:fixed;top:8px;right:8px;z-index:50;background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.15);color:#fff;font-size:20px;width:36px;height:36px;border-radius:50%;cursor:pointer}
+#fs-btn{position:fixed;top:76px;left:8px;z-index:50;background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.15);color:#ddd;font-size:clamp(10px,2.2vw,12px);padding:5px 10px;border-radius:6px;cursor:pointer;min-height:32px;touch-action:manipulation}
 #rules-btn{position:fixed;top:8px;right:50px;z-index:50;background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.15);color:#fff;font-size:13px;padding:6px 12px;border-radius:16px;cursor:pointer}
 #quit-btn{position:fixed;top:8px;left:8px;z-index:55;background:rgba(160,0,0,.8);border:1px solid rgba(255,100,100,.3);color:#fff;font-size:12px;padding:6px 12px;border-radius:16px;cursor:pointer;display:none;font-weight:bold}
 @media(max-width:500px){#quit-btn{font-size:10px;padding:5px 10px}}
@@ -575,6 +576,7 @@ body{overflow:hidden;background:#0a2a0a}
   </div>
   <div id="disc-banner"><div class="disc-title" id="disc-text">⚠️ Disconnesso...</div><div class="disc-steps"><span class="step" id="disc-s1">① Verifica</span> <span class="step" id="disc-s2">② Riconnessione</span> <span class="step" id="disc-s3">③ Ripristino</span></div><div class="disc-wait" id="disc-wait"></div><button id="reconn-btn" onclick="forceReconnect()">🔄 Riconnetti</button></div>
   <button id="vol-btn" onclick="muted=!muted;this.textContent=muted?'🔇':'🔊'">🔊</button>
+  <button id="fs-btn" onclick="toggleFullscreen()" title="Schermo intero">⛶ Schermo intero</button>
   <button id="rules-btn" onclick="document.getElementById('rules-panel').style.display='block'">📖</button>
   <button id="emote-trigger-btn" onclick="toggleEmoteMenu()">🙂 Emozioni</button>
   <div class="emote-menu" id="emote-menu"></div>
@@ -791,7 +793,7 @@ body{overflow:hidden;background:#0a2a0a}
 
 <script>
 // ═══════ CONSTANTS ═══════
-const APP_VERSION='v1.0.0';
+const APP_VERSION='v1.0.1';
 const SUITS=['♠','♥','♦','♣'],SNAMES=['S','H','D','C'],RDSP=['','','2','3','4','5','6','7','8','9','0','J','Q','K','A'];
 const MIN_PLAYERS=4,MAX_PLAYERS=5,START_CHIPS=1000,ANTE=10;
 const DEAL_LEAD_IN_MS=700;
@@ -882,6 +884,16 @@ function initVersionUi(){
   if(dbgToggle)dbgToggle.textContent='DBG '+APP_VERSION;
 }
 initVersionUi();
+function toggleFullscreen(){
+  const el=document.documentElement;
+  if(!document.fullscreenElement&&!document.webkitFullscreenElement){
+    (el.requestFullscreen||el.webkitRequestFullscreen).call(el);
+  }else{
+    (document.exitFullscreen||document.webkitExitFullscreen).call(document);
+  }
+}
+document.addEventListener('fullscreenchange',()=>{const b=document.getElementById('fs-btn');if(b)b.textContent=document.fullscreenElement?'⛶':'⛶'});
+document.addEventListener('webkitfullscreenchange',()=>{const b=document.getElementById('fs-btn');if(b)b.textContent=document.webkitFullscreenElement?'⛶':'⛶'});
 function getFxLayer(){return document.getElementById('fx-layer')}
 function getChipPalette(amount){
   if(amount>=500)return{base:'#6a1b9a',dark:'#4a148c',highlight:'#ce93d8',accent:'#f3e5f5',centerHi:'#f3e5f5',center:'#ce93d8',centerDark:'#ab47bc'};
@@ -3667,7 +3679,7 @@ function _clearSession(){try{localStorage.removeItem('poker_room');localStorage.
 function _getSession(){try{const room=localStorage.getItem('poker_room');const name=localStorage.getItem('poker_name');const hosting=localStorage.getItem('poker_host')==='1';const ts=parseInt(localStorage.getItem('poker_sess_ts')||'0');if(room&&name&&ts&&(Date.now()-ts)<7200000)return{room,name,hosting};if(ts&&(Date.now()-ts)>=7200000)_clearSession()}catch(e){}return null}
 
 var _gameStartedAt=0,_gameElapsedMs=0;
-const GAME_VERSION='1.0.0';
+const GAME_VERSION='1.0.1';
 var _authUser=null,_isGuest=false;
 
 // ═══════ HOST MIGRATION — Epoch-based lease ═══════
